@@ -1,5 +1,6 @@
 import FeaturedInventory from "@/components/home/FeaturedInventory";
 import Hero from "@/components/home/Hero";
+import ShopBySport from "@/components/home/ShopBySport";
 import Navbar from "@/components/layout/Navbar";
 
 export default function Home() {
@@ -8,6 +9,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <FeaturedInventory />
+      <ShopBySport />
     </>
   );
 }
