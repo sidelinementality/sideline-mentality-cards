@@ -166,3 +166,75 @@ export async function POST(request: Request) {
     );
   }
 }
+export async function DELETE(
+    request: Request,
+    context: RouteContext
+  ) {
+    try {
+      const { id } = await context.params;
+  
+      const { data: existingCard, error: fetchError } =
+        await supabaseAdmin
+          .from("cards")
+          .select("image_url")
+          .eq("id", id)
+          .single();
+  
+      if (fetchError) {
+        return NextResponse.json(
+          { error: "Card not found." },
+          { status: 404 }
+        );
+      }
+  
+      if (existingCard.image_url) {
+        try {
+          const imagePath = existingCard.image_url.split("/card-images/")[1];
+  
+          if (imagePath) {
+            await supabaseAdmin.storage
+              .from("card-images")
+              .remove([imagePath]);
+          }
+        } catch (storageError) {
+          console.error(
+            "Unable to delete image from storage:",
+            storageError
+          );
+        }
+      }
+  
+      const { error } = await supabaseAdmin
+        .from("cards")
+        .delete()
+        .eq("id", id);
+  
+      if (error) {
+        console.error(error);
+  
+        return NextResponse.json(
+          {
+            error: "Unable to delete card.",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+  
+      return NextResponse.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error(error);
+  
+      return NextResponse.json(
+        {
+          error: "Unexpected server error.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+  }
