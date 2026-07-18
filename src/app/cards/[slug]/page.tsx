@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -12,58 +13,73 @@ export default async function CardPage({ params }: CardPageProps) {
 
   const { data: card, error } = await supabase
     .from("cards")
-    .select("id, slug, player_name, sport, price, image_url, brand, year")
+    .select("*")
     .eq("slug", slug)
-    .single();
+    .maybeSingle();
 
-  if (error || !card) {
+  if (error) {
+    console.error("Card lookup error:", error);
+  }
+
+  if (!card) {
     notFound();
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 px-6 py-16">
-      <div className="mx-auto grid max-w-6xl gap-12 rounded-3xl bg-white p-8 shadow-xl lg:grid-cols-2">
-        <div className="flex min-h-[500px] items-center justify-center rounded-2xl bg-gradient-to-br from-gray-950 via-gray-900 to-green-950 p-8">
+    <main className="min-h-screen bg-zinc-100 px-4 py-16 sm:px-6">
+      <div className="mx-auto grid max-w-5xl gap-10 rounded-3xl bg-white p-7 shadow-xl md:grid-cols-2 md:p-10">
+        <div className="flex min-h-[450px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 to-green-950 p-7">
           {card.image_url ? (
             <img
               src={card.image_url}
-              alt={`${card.player_name} sports card`}
-              className="max-h-[600px] w-full rounded-xl object-contain"
+              alt={`${card.player_name} trading card`}
+              className="max-h-[550px] w-full object-contain"
             />
           ) : (
-            <p className="text-center font-bold uppercase tracking-widest text-green-400">
-              Card Image Coming Soon
-            </p>
+            <div className="flex min-h-[400px] w-full items-center justify-center rounded-xl bg-black px-6 text-center">
+              <p className="font-bold text-zinc-400">
+                Card image coming soon
+              </p>
+            </div>
           )}
         </div>
 
         <div className="flex flex-col justify-center">
-          <p className="text-sm font-bold uppercase tracking-[0.25em] text-green-700">
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-green-700">
             {card.sport}
           </p>
 
-          <h1 className="mt-4 text-5xl font-black text-gray-900">
+          <h1 className="mt-4 text-4xl font-black text-slate-950">
             {card.player_name}
           </h1>
 
-          <p className="mt-4 text-xl text-gray-500">
+          <p className="mt-4 text-lg text-slate-500">
             {card.year} {card.brand}
           </p>
 
-          <p className="mt-8 text-4xl font-black text-gray-900">
+          {card.set_name && (
+            <p className="mt-1 text-sm text-slate-500">
+              {card.set_name}
+            </p>
+          )}
+
+          <p className="mt-8 text-3xl font-black text-slate-950">
             ${Number(card.price).toFixed(2)}
           </p>
 
-          <button className="mt-10 rounded-xl bg-green-700 px-8 py-4 text-lg font-bold text-white transition hover:bg-green-800">
+          <button
+            type="button"
+            className="mt-10 rounded-xl bg-green-700 px-6 py-4 font-bold text-white transition hover:bg-green-600"
+          >
             Add to Cart
           </button>
 
-          <a
+          <Link
             href="/"
-            className="mt-6 text-center font-semibold text-green-700 hover:text-green-800"
+            className="mt-6 text-center font-bold text-green-700 hover:text-green-600"
           >
             Back to Homepage
-          </a>
+          </Link>
         </div>
       </div>
     </main>
