@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-type CreateCardRequest = {
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+type UpdateCardRequest = {
   slug?: string;
   playerName?: string;
   sport?: string;
   team?: string;
-  year?: number;
+  year?: number | string;
   brand?: string;
   setName?: string;
   cardNumber?: string;
   gradeCompany?: string;
   grade?: string;
   price?: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
   featured?: boolean;
   rookieCard?: boolean;
   autograph?: boolean;
   serialNumber?: string;
   stock?: number;
   conditionNotes?: string;
+  stockOnly?: boolean;
 };
 
 function cleanOptionalText(value: string | undefined) {
@@ -28,15 +35,76 @@ function cleanOptionalText(value: string | undefined) {
   return cleanedValue ? cleanedValue : null;
 }
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  context: RouteContext
+) {
   try {
-    const body = (await request.json()) as CreateCardRequest;
+    const { id } = await context.params;
+    const body = (await request.json()) as UpdateCardRequest;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "A card ID is required." },
+        { status: 400 }
+      );
+    }
+
+    const bodyKeys = Object.keys(body);
+
+    const isStockOnlyUpdate =
+      body.stockOnly === true ||
+      (bodyKeys.includes("stock") &&
+        bodyKeys.every(
+          (key) => key === "stock" || key === "stockOnly"
+        ));
+
+    if (isStockOnlyUpdate) {
+      if (
+        typeof body.stock !== "number" ||
+        !Number.isInteger(body.stock) ||
+        body.stock < 0
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Stock must be a whole number of zero or greater.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from("cards")
+        .update({
+          stock: body.stock,
+        })
+        .eq("id", id)
+        .select("id, stock")
+        .single();
+
+      if (error) {
+        console.error("Supabase quick stock update error:", error);
+
+        return NextResponse.json(
+          {
+            error: "The stock amount could not be updated.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        message: "Stock updated successfully.",
+        card: data,
+      });
+    }
 
     const slug = body.slug?.trim().toLowerCase();
     const playerName = body.playerName?.trim();
     const sport = body.sport?.trim();
     const brand = body.brand?.trim();
-    const imageUrl = body.imageUrl?.trim();
+    const year = Number(body.year);
 
     if (!slug) {
       return NextResponse.json(
@@ -57,7 +125,9 @@ export async function POST(request: Request) {
 
     if (!playerName) {
       return NextResponse.json(
-        { error: "A player or subject name is required." },
+        {
+          error: "A player or subject name is required.",
+        },
         { status: 400 }
       );
     }
@@ -69,7 +139,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Number.isInteger(body.year) || Number(body.year) < 1800) {
+    if (!Number.isInteger(year) || year < 1800) {
       return NextResponse.json(
         { error: "Please enter a valid card year." },
         { status: 400 }
@@ -94,45 +164,48 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!imageUrl) {
+    if (
+      typeof body.stock !== "number" ||
+      !Number.isInteger(body.stock) ||
+      body.stock < 0
+    ) {
       return NextResponse.json(
-        { error: "Please upload a card image before saving." },
+        {
+          error:
+            "Stock must be a whole number of zero or greater.",
+        },
         { status: 400 }
       );
     }
 
-    const stock =
-      Number.isInteger(body.stock) && Number(body.stock) >= 0
-        ? Number(body.stock)
-        : 1;
-
     const { data, error } = await supabaseAdmin
       .from("cards")
-      .insert({
+      .update({
         slug,
         player_name: playerName,
         sport,
         team: cleanOptionalText(body.team),
-        year: Number(body.year),
+        year,
         brand,
         set_name: cleanOptionalText(body.setName),
         card_number: cleanOptionalText(body.cardNumber),
         grade_company: cleanOptionalText(body.gradeCompany),
         grade: cleanOptionalText(body.grade),
-        price: Number(body.price),
-        image_url: imageUrl,
+        price: body.price,
+        image_url: body.imageUrl ?? null,
         featured: Boolean(body.featured),
         rookie_card: Boolean(body.rookieCard),
         autograph: Boolean(body.autograph),
         serial_number: cleanOptionalText(body.serialNumber),
-        stock,
+        stock: body.stock,
         condition_notes: cleanOptionalText(body.conditionNotes),
       })
-      .select("id, slug")
+      .eq("id", id)
+      .select("*")
       .single();
 
     if (error) {
-      console.error("Supabase card insert error:", error);
+      console.error("Supabase card update error:", error);
 
       if (error.code === "23505") {
         return NextResponse.json(
@@ -145,96 +218,110 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: "The card could not be saved." },
+        { error: "The card could not be updated." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(
-      {
-        message: "Card saved successfully.",
-        card: data,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      message: "Card updated successfully.",
+      card: data,
+    });
   } catch (error) {
-    console.error("Unexpected card creation error:", error);
+    console.error("Unexpected card update error:", error);
 
     return NextResponse.json(
-      { error: "Something went wrong while saving the card." },
+      {
+        error: "Something went wrong while updating the card.",
+      },
       { status: 500 }
     );
   }
 }
+
 export async function DELETE(
-    request: Request,
-    context: RouteContext
-  ) {
-    try {
-      const { id } = await context.params;
-  
-      const { data: existingCard, error: fetchError } =
-        await supabaseAdmin
-          .from("cards")
-          .select("image_url")
-          .eq("id", id)
-          .single();
-  
-      if (fetchError) {
-        return NextResponse.json(
-          { error: "Card not found." },
-          { status: 404 }
-        );
-      }
-  
-      if (existingCard.image_url) {
-        try {
-          const imagePath = existingCard.image_url.split("/card-images/")[1];
-  
-          if (imagePath) {
+  _request: Request,
+  context: RouteContext
+) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "A card ID is required." },
+        { status: 400 }
+      );
+    }
+
+    const { data: existingCard, error: fetchError } =
+      await supabaseAdmin
+        .from("cards")
+        .select("image_url")
+        .eq("id", id)
+        .single();
+
+    if (fetchError || !existingCard) {
+      return NextResponse.json(
+        { error: "Card not found." },
+        { status: 404 }
+      );
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("cards")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      console.error(
+        "Supabase card deletion error:",
+        deleteError
+      );
+
+      return NextResponse.json(
+        { error: "The card could not be deleted." },
+        { status: 500 }
+      );
+    }
+
+    if (existingCard.image_url) {
+      try {
+        const imagePath =
+          existingCard.image_url.split("/card-images/")[1];
+
+        if (imagePath) {
+          const { error: storageError } =
             await supabaseAdmin.storage
               .from("card-images")
               .remove([imagePath]);
+
+          if (storageError) {
+            console.error(
+              "Unable to delete image from storage:",
+              storageError
+            );
           }
-        } catch (storageError) {
-          console.error(
-            "Unable to delete image from storage:",
-            storageError
-          );
         }
-      }
-  
-      const { error } = await supabaseAdmin
-        .from("cards")
-        .delete()
-        .eq("id", id);
-  
-      if (error) {
-        console.error(error);
-  
-        return NextResponse.json(
-          {
-            error: "Unable to delete card.",
-          },
-          {
-            status: 500,
-          }
+      } catch (storageError) {
+        console.error(
+          "Unexpected image deletion error:",
+          storageError
         );
       }
-  
-      return NextResponse.json({
-        success: true,
-      });
-    } catch (error) {
-      console.error(error);
-  
-      return NextResponse.json(
-        {
-          error: "Unexpected server error.",
-        },
-        {
-          status: 500,
-        }
-      );
     }
+
+    return NextResponse.json({
+      success: true,
+      message: "Card deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Unexpected card deletion error:", error);
+
+    return NextResponse.json(
+      {
+        error: "Something went wrong while deleting the card.",
+      },
+      { status: 500 }
+    );
   }
+}
