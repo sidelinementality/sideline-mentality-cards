@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-
+import DashboardInventorySearch from "@/components/DashboardInventorySearch";
+import DashboardStats from "@/components/dashboard/DashboardStats";
+import InventoryHealth from "@/components/dashboard/InventoryHealth";
+import InventoryBySport from "@/components/dashboard/InventoryBySport";
+import InventoryByBrand from "@/components/dashboard/InventoryByBrand";
+import InventoryByYear from "@/components/dashboard/InventoryByYear";
+import InventoryValueByCategory from "@/components/dashboard/InventoryValueByCategory";
 type Card = {
   id: string;
   slug: string;
@@ -15,6 +21,27 @@ type Card = {
   created_at: string | null;
 };
 
+type SportSummary = {
+  sport: string;
+  listings: number;
+  quantity: number;
+  value: number;
+  percentage: number;
+};
+type BrandSummary = {
+    brand: string;
+    listings: number;
+    quantity: number;
+    value: number;
+    percentage: number;
+  };
+  type YearSummary = {
+    year: string;
+    listings: number;
+    quantity: number;
+    value: number;
+    percentage: number;
+  };
 export default async function DashboardPage() {
   const { data: cards, error } = await supabase
     .from("cards")
@@ -63,22 +90,253 @@ export default async function DashboardPage() {
         ) / totalListings
       : 0;
 
-  const featuredCards = inventory.filter(
-    (card) => card.featured
-  ).length;
+  const featuredCards = inventory.filter((card) => card.featured).length;
 
-  const lowStockCards = inventory.filter((card) => {
+  const healthyStockCards = inventory.filter(
+    (card) => Number(card.stock ?? 0) >= 3
+  );
+
+  const lowStockInventory = inventory.filter((card) => {
     const stock = Number(card.stock ?? 0);
 
     return stock > 0 && stock <= 2;
-  }).length;
+  });
 
-  const outOfStockCards = inventory.filter(
+  const outOfStockInventory = inventory.filter(
     (card) => Number(card.stock ?? 0) === 0
-  ).length;
+  );
 
+  const cardsMissingImages = inventory.filter((card) => !card.image_url);
+
+  const highestValueCard =
+    inventory.length > 0
+      ? inventory.reduce((highestCard, currentCard) => {
+          const highestPrice = Number(highestCard.price ?? 0);
+          const currentPrice = Number(currentCard.price ?? 0);
+
+          return currentPrice > highestPrice
+            ? currentCard
+            : highestCard;
+        })
+      : null;
+
+  const newestCard = inventory[0] ?? null;
   const recentCards = inventory.slice(0, 5);
 
+  const sportTotals = inventory.reduce<
+    Record<
+      string,
+      {
+        listings: number;
+        quantity: number;
+        value: number;
+      }
+    >
+  >((totals, card) => {
+    const sportName = card.sport?.trim() || "Uncategorized";
+    const stock = Number(card.stock ?? 0);
+    const price = Number(card.price ?? 0);
+
+    if (!totals[sportName]) {
+      totals[sportName] = {
+        listings: 0,
+        quantity: 0,
+        value: 0,
+      };
+    }
+
+    totals[sportName].listings += 1;
+    totals[sportName].quantity += stock;
+    totals[sportName].value += price * stock;
+
+    return totals;
+  }, {});
+
+  const inventoryBySport: SportSummary[] = Object.entries(sportTotals)
+    .map(([sport, totals]) => ({
+      sport,
+      listings: totals.listings,
+      quantity: totals.quantity,
+      value: totals.value,
+      percentage:
+        totalQuantity > 0 ? (totals.quantity / totalQuantity) * 100 : 0,
+    }))
+    .sort((a, b) => b.quantity - a.quantity);
+    const brandTotals = inventory.reduce<
+    Record<
+      string,
+      {
+        listings: number;
+        quantity: number;
+        value: number;
+      }
+    >
+  >((totals, card) => {
+    const brandName = card.brand?.trim() || "Uncategorized";
+    const stock = Number(card.stock ?? 0);
+    const price = Number(card.price ?? 0);
+
+    if (!totals[brandName]) {
+      totals[brandName] = {
+        listings: 0,
+        quantity: 0,
+        value: 0,
+      };
+    }
+
+    totals[brandName].listings += 1;
+    totals[brandName].quantity += stock;
+    totals[brandName].value += price * stock;
+
+    return totals;
+  }, {});
+
+  const inventoryByBrand: BrandSummary[] = Object.entries(brandTotals)
+    .map(([brand, totals]) => ({
+      brand,
+      listings: totals.listings,
+      quantity: totals.quantity,
+      value: totals.value,
+      percentage:
+        totalQuantity > 0 ? (totals.quantity / totalQuantity) * 100 : 0,
+    }))
+    .sort((a, b) => b.quantity - a.quantity);
+
+  const topBrand = inventoryByBrand[0] ?? null;
+  const yearTotals = inventory.reduce<
+  Record<
+    string,
+    {
+      listings: number;
+      quantity: number;
+      value: number;
+    }
+  >
+>((totals, card) => {
+  const yearName = card.year ? String(card.year) : "Unknown Year";
+  const stock = Number(card.stock ?? 0);
+  const price = Number(card.price ?? 0);
+
+  if (!totals[yearName]) {
+    totals[yearName] = {
+      listings: 0,
+      quantity: 0,
+      value: 0,
+    };
+  }
+
+  totals[yearName].listings += 1;
+  totals[yearName].quantity += stock;
+  totals[yearName].value += price * stock;
+
+  return totals;
+}, {});
+
+const inventoryByYear: YearSummary[] = Object.entries(yearTotals)
+  .map(([year, totals]) => ({
+    year,
+    listings: totals.listings,
+    quantity: totals.quantity,
+    value: totals.value,
+    percentage:
+      totalQuantity > 0 ? (totals.quantity / totalQuantity) * 100 : 0,
+  }))
+  .sort((a, b) => {
+    if (a.year === "Unknown Year") return 1;
+    if (b.year === "Unknown Year") return -1;
+
+    return Number(b.year) - Number(a.year);
+  });
+
+const largestYear =
+  [...inventoryByYear].sort((a, b) => b.quantity - a.quantity)[0] ?? null;
+  const highestValueSport =
+  [...inventoryBySport].sort((a, b) => b.value - a.value)[0] ?? null;
+
+const highestValueBrand =
+  [...inventoryByBrand].sort((a, b) => b.value - a.value)[0] ?? null;
+
+const highestValueYear =
+  [...inventoryByYear].sort((a, b) => b.value - a.value)[0] ?? null;
+  const topSport = inventoryBySport[0] ?? null;
+  const valueCategories = [
+    {
+      label: "Under $25",
+      quantity: inventory
+        .filter((card) => Number(card.price ?? 0) < 25)
+        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
+
+      value: inventory
+        .filter((card) => Number(card.price ?? 0) < 25)
+        .reduce(
+          (total, card) =>
+            total +
+            Number(card.price ?? 0) * Number(card.stock ?? 0),
+          0
+        ),
+    },
+    {
+      label: "$25–$99",
+      quantity: inventory
+        .filter(
+          (card) =>
+            Number(card.price ?? 0) >= 25 &&
+            Number(card.price ?? 0) < 100
+        )
+        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
+
+      value: inventory
+        .filter(
+          (card) =>
+            Number(card.price ?? 0) >= 25 &&
+            Number(card.price ?? 0) < 100
+        )
+        .reduce(
+          (total, card) =>
+            total +
+            Number(card.price ?? 0) * Number(card.stock ?? 0),
+          0
+        ),
+    },
+    {
+      label: "$100–$249",
+      quantity: inventory
+        .filter(
+          (card) =>
+            Number(card.price ?? 0) >= 100 &&
+            Number(card.price ?? 0) < 250
+        )
+        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
+
+      value: inventory
+        .filter(
+          (card) =>
+            Number(card.price ?? 0) >= 100 &&
+            Number(card.price ?? 0) < 250
+        )
+        .reduce(
+          (total, card) =>
+            total +
+            Number(card.price ?? 0) * Number(card.stock ?? 0),
+          0
+        ),
+    },
+    {
+      label: "$250+",
+      quantity: inventory
+        .filter((card) => Number(card.price ?? 0) >= 250)
+        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
+
+      value: inventory
+        .filter((card) => Number(card.price ?? 0) >= 250)
+        .reduce(
+          (total, card) =>
+            total +
+            Number(card.price ?? 0) * Number(card.stock ?? 0),
+          0
+        ),
+    },
+  ];
   const dashboardStats = [
     {
       label: "Total Listings",
@@ -106,13 +364,18 @@ export default async function DashboardPage() {
       description: "Cards displayed as featured inventory",
     },
     {
+      label: "Healthy Stock",
+      value: healthyStockCards.length,
+      description: "Listings with three or more cards available",
+    },
+    {
       label: "Low Stock",
-      value: lowStockCards,
+      value: lowStockInventory.length,
       description: "Listings with only one or two cards left",
     },
     {
       label: "Out of Stock",
-      value: outOfStockCards,
+      value: outOfStockInventory.length,
       description: "Listings that currently have no inventory",
     },
   ];
@@ -142,27 +405,27 @@ export default async function DashboardPage() {
         </section>
       ) : (
         <>
-          <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {dashboardStats.map((stat) => (
-              <article
-                key={stat.label}
-                className="rounded-2xl border border-white/10 bg-white/5 p-6"
-              >
-                <p className="text-sm font-semibold text-zinc-400">
-                  {stat.label}
-                </p>
+                    <DashboardStats stats={dashboardStats} />
 
-                <p className="mt-3 text-3xl font-black text-white">
-                  {stat.value}
-                </p>
+                    <InventoryHealth
+            outOfStockInventory={outOfStockInventory}
+            lowStockInventory={lowStockInventory}
+            cardsMissingImages={cardsMissingImages}
+            highestValueCard={highestValueCard}
+            newestCard={newestCard}
+          />
 
-                <p className="mt-3 text-sm leading-6 text-zinc-500">
-                  {stat.description}
-                </p>
-              </article>
-            ))}
-          </section>
-
+<InventoryBySport
+            inventoryBySport={inventoryBySport}
+            topSport={topSport}
+          />
+                    <InventoryByBrand
+            inventoryByBrand={inventoryByBrand}
+            topBrand={topBrand}
+          />
+                    <InventoryByYear inventoryByYear={inventoryByYear} />
+                    <InventoryValueByCategory valueCategories={valueCategories} />
+          <DashboardInventorySearch cards={inventory} />
           <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
               <div className="flex items-center justify-between border-b border-white/10 p-6">
@@ -262,8 +525,7 @@ export default async function DashboardPage() {
                 </h2>
 
                 <p className="mt-3 text-zinc-400">
-                  Upload a card image and add a new listing to your
-                  inventory.
+                  Upload a card image and add a new listing to your inventory.
                 </p>
 
                 <Link
