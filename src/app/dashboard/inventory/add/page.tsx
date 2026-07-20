@@ -7,7 +7,8 @@ import CardImageUpload from "@/components/cards/CardImageUpload";
 export default function AddCardPage() {
   const router = useRouter();
 
-  const [imageUrl, setImageUrl] = useState("");
+  const [frontImageUrl, setFrontImageUrl] = useState("");
+  const [backImageUrl, setBackImageUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -30,7 +31,8 @@ export default function AddCardPage() {
         year: Number(formData.get("year")),
         brand: String(formData.get("brand") || "").trim(),
         price: Number(formData.get("price")),
-        imageUrl,
+        imageUrl: frontImageUrl,
+        backImageUrl,
         featured: formData.get("featured") === "on",
       };
 
@@ -73,8 +75,8 @@ export default function AddCardPage() {
         </h1>
 
         <p className="mt-3 max-w-2xl text-zinc-400">
-          Enter the card information, upload an image, and save the listing to
-          your Sideline Mentality Cards inventory.
+          Enter the card information and upload front and back images for your
+          Sideline Mentality Cards inventory.
         </p>
       </section>
 
@@ -225,23 +227,69 @@ export default function AddCardPage() {
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="mb-6">
-            <h2 className="text-xl font-black text-white">Card Image</h2>
+            <h2 className="text-xl font-black text-white">
+              Inventory Photo Studio
+            </h2>
 
             <p className="mt-2 text-sm text-zinc-400">
-              Select the card image and click Upload Card Image before saving
-              the listing.
+              Upload the front image first. The back image is optional but
+              recommended.
             </p>
           </div>
 
-          <CardImageUpload onUploadComplete={setImageUrl} />
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div className="mb-5">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
+                  Required
+                </p>
 
-          {imageUrl && (
-            <div className="mt-6 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
-              <p className="text-sm font-semibold text-green-300">
-                Image uploaded and ready to save with this card.
-              </p>
+                <h3 className="mt-2 text-lg font-black text-white">
+                  Front Image
+                </h3>
+
+                <p className="mt-2 text-sm text-zinc-400">
+                  This will be the main image shown throughout the website.
+                </p>
+              </div>
+
+              <CardImageUpload onUploadComplete={setFrontImageUrl} />
+
+              {frontImageUrl && (
+                <div className="mt-5 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+                  <p className="text-sm font-semibold text-green-300">
+                    Front image uploaded and ready to save.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div className="mb-5">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+                  Optional
+                </p>
+
+                <h3 className="mt-2 text-lg font-black text-white">
+                  Back Image
+                </h3>
+
+                <p className="mt-2 text-sm text-zinc-400">
+                  Upload the back so buyers can inspect the complete card.
+                </p>
+              </div>
+
+              <CardImageUpload onUploadComplete={setBackImageUrl} />
+
+              {backImageUrl && (
+                <div className="mt-5 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+                  <p className="text-sm font-semibold text-green-300">
+                    Back image uploaded and ready to save.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
@@ -284,7 +332,7 @@ export default function AddCardPage() {
 
           <button
             type="submit"
-            disabled={!imageUrl || isSaving}
+            disabled={!frontImageUrl || isSaving}
             className="rounded-lg bg-green-700 px-6 py-3 font-bold text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSaving ? "Saving Card..." : "Save Card"}

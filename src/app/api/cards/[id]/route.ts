@@ -6,14 +6,15 @@ type UpdateCardRequest = {
   playerName?: string;
   sport?: string;
   team?: string;
-  year?: number;
+  year?: number | string;
   brand?: string;
   setName?: string;
   cardNumber?: string;
   gradeCompany?: string;
   grade?: string;
   price?: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  backImageUrl?: string | null;
   featured?: boolean;
   rookieCard?: boolean;
   autograph?: boolean;
@@ -29,7 +30,9 @@ type RouteContext = {
   }>;
 };
 
-function cleanOptionalText(value: string | undefined) {
+function cleanOptionalText(
+  value: string | null | undefined,
+) {
   const cleanedValue = value?.trim();
 
   return cleanedValue ? cleanedValue : null;
@@ -37,7 +40,7 @@ function cleanOptionalText(value: string | undefined) {
 
 export async function PATCH(
   request: Request,
-  context: RouteContext
+  context: RouteContext,
 ) {
   try {
     const { id } = await context.params;
@@ -46,13 +49,10 @@ export async function PATCH(
     if (!id) {
       return NextResponse.json(
         { error: "A card ID is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    /*
-     * Quick stock update from the inventory + and − buttons.
-     */
     if (body.stockOnly === true) {
       if (
         typeof body.stock !== "number" ||
@@ -61,7 +61,7 @@ export async function PATCH(
       ) {
         return NextResponse.json(
           { error: "Please enter a valid stock quantity." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -78,8 +78,11 @@ export async function PATCH(
         console.error("Supabase stock update error:", error);
 
         return NextResponse.json(
-          { error: "The stock quantity could not be updated." },
-          { status: 500 }
+          {
+            error:
+              "The stock quantity could not be updated.",
+          },
+          { status: 500 },
         );
       }
 
@@ -89,19 +92,20 @@ export async function PATCH(
       });
     }
 
-    /*
-     * Full card update from the Edit Card page.
-     */
     const slug = body.slug?.trim().toLowerCase();
     const playerName = body.playerName?.trim();
     const sport = body.sport?.trim();
     const brand = body.brand?.trim();
-    const imageUrl = body.imageUrl?.trim();
+    const imageUrl = cleanOptionalText(body.imageUrl);
+    const backImageUrl = cleanOptionalText(
+      body.backImageUrl,
+    );
+    const year = Number(body.year);
 
     if (!slug) {
       return NextResponse.json(
         { error: "A URL slug is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,35 +115,41 @@ export async function PATCH(
           error:
             "The URL slug may only contain lowercase letters, numbers, and hyphens.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!playerName) {
       return NextResponse.json(
-        { error: "A player or subject name is required." },
-        { status: 400 }
+        {
+          error: "A player or subject name is required.",
+        },
+        { status: 400 },
       );
     }
 
     if (!sport) {
       return NextResponse.json(
         { error: "A sport is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (!Number.isInteger(body.year) || Number(body.year) < 1800) {
+    if (
+      !Number.isInteger(year) ||
+      year < 1800 ||
+      year > 2100
+    ) {
       return NextResponse.json(
         { error: "Please enter a valid card year." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!brand) {
       return NextResponse.json(
         { error: "A brand is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -150,7 +160,7 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         { error: "Please enter a valid price." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -161,14 +171,14 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         { error: "Please enter a valid stock quantity." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!imageUrl) {
       return NextResponse.json(
-        { error: "A card image is required." },
-        { status: 400 }
+        { error: "A front card image is required." },
+        { status: 400 },
       );
     }
 
@@ -179,23 +189,30 @@ export async function PATCH(
         player_name: playerName,
         sport,
         team: cleanOptionalText(body.team),
-        year: Number(body.year),
+        year,
         brand,
         set_name: cleanOptionalText(body.setName),
         card_number: cleanOptionalText(body.cardNumber),
-        grade_company: cleanOptionalText(body.gradeCompany),
+        grade_company: cleanOptionalText(
+          body.gradeCompany,
+        ),
         grade: cleanOptionalText(body.grade),
-        price: Number(body.price),
+        price: body.price,
         image_url: imageUrl,
+        back_image_url: backImageUrl,
         featured: Boolean(body.featured),
         rookie_card: Boolean(body.rookieCard),
         autograph: Boolean(body.autograph),
-        serial_number: cleanOptionalText(body.serialNumber),
-        stock: Number(body.stock),
-        condition_notes: cleanOptionalText(body.conditionNotes),
+        serial_number: cleanOptionalText(
+          body.serialNumber,
+        ),
+        stock: body.stock,
+        condition_notes: cleanOptionalText(
+          body.conditionNotes,
+        ),
       })
       .eq("id", id)
-      .select("id, slug")
+      .select("*")
       .single();
 
     if (error) {
@@ -207,13 +224,13 @@ export async function PATCH(
             error:
               "That URL slug is already being used by another card.",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
 
       return NextResponse.json(
         { error: "The card could not be updated." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -222,18 +239,24 @@ export async function PATCH(
       card: data,
     });
   } catch (error) {
-    console.error("Unexpected card update error:", error);
+    console.error(
+      "Unexpected card update error:",
+      error,
+    );
 
     return NextResponse.json(
-      { error: "Something went wrong while updating the card." },
-      { status: 500 }
+      {
+        error:
+          "Something went wrong while updating the card.",
+      },
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   _request: Request,
-  context: RouteContext
+  context: RouteContext,
 ) {
   try {
     const { id } = await context.params;
@@ -241,21 +264,21 @@ export async function DELETE(
     if (!id) {
       return NextResponse.json(
         { error: "A card ID is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { data: existingCard, error: fetchError } =
       await supabaseAdmin
         .from("cards")
-        .select("image_url")
+        .select("image_url, back_image_url")
         .eq("id", id)
         .single();
 
     if (fetchError || !existingCard) {
       return NextResponse.json(
         { error: "Card not found." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -265,36 +288,49 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      console.error("Supabase card deletion error:", deleteError);
+      console.error(
+        "Supabase card deletion error:",
+        deleteError,
+      );
 
       return NextResponse.json(
         { error: "The card could not be deleted." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    if (existingCard.image_url) {
+    const imagesToDelete = [
+      existingCard.image_url,
+      existingCard.back_image_url,
+    ].filter(
+      (image): image is string =>
+        typeof image === "string" && image.length > 0,
+    );
+
+    for (const imageUrl of imagesToDelete) {
       try {
         const imagePath =
-          existingCard.image_url.split("/card-images/")[1];
+          imageUrl.split("/card-images/")[1];
 
-        if (imagePath) {
-          const { error: storageError } =
-            await supabaseAdmin.storage
-              .from("card-images")
-              .remove([imagePath]);
+        if (!imagePath) {
+          continue;
+        }
 
-          if (storageError) {
-            console.error(
-              "Unable to delete image from storage:",
-              storageError
-            );
-          }
+        const { error: storageError } =
+          await supabaseAdmin.storage
+            .from("card-images")
+            .remove([imagePath]);
+
+        if (storageError) {
+          console.error(
+            "Unable to delete image from storage:",
+            storageError,
+          );
         }
       } catch (storageError) {
         console.error(
           "Unexpected image deletion error:",
-          storageError
+          storageError,
         );
       }
     }
@@ -304,11 +340,17 @@ export async function DELETE(
       message: "Card deleted successfully.",
     });
   } catch (error) {
-    console.error("Unexpected card deletion error:", error);
+    console.error(
+      "Unexpected card deletion error:",
+      error,
+    );
 
     return NextResponse.json(
-      { error: "Something went wrong while deleting the card." },
-      { status: 500 }
+      {
+        error:
+          "Something went wrong while deleting the card.",
+      },
+      { status: 500 },
     );
   }
 }

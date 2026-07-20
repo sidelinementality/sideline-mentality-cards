@@ -2,11 +2,13 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import DashboardInventorySearch from "@/components/DashboardInventorySearch";
 import DashboardStats from "@/components/dashboard/DashboardStats";
-import InventoryHealth from "@/components/dashboard/InventoryHealth";
-import InventoryBySport from "@/components/dashboard/InventoryBySport";
-import InventoryByBrand from "@/components/dashboard/InventoryByBrand";
-import InventoryByYear from "@/components/dashboard/InventoryByYear";
-import InventoryValueByCategory from "@/components/dashboard/InventoryValueByCategory";
+import DealerInsights from "@/components/dashboard/DealerInsights";
+import InventoryValueChart from "@/components/dashboard/InventoryValueChart";
+import InventoryValueByBrandChart from "@/components/dashboard/InventoryValueByBrandChart";
+import InventoryValueByYearChart from "@/components/dashboard/InventoryValueByYearChart";
+import StockHealthChart from "@/components/dashboard/StockHealthChart";
+import DealerHighlights from "@/components/dashboard/DealerHighlights";
+import RecentlyAddedCards from "@/components/dashboard/RecentlyAddedCards";
 type Card = {
   id: string;
   slug: string;
@@ -45,8 +47,7 @@ type BrandSummary = {
 export default async function DashboardPage() {
   const { data: cards, error } = await supabase
     .from("cards")
-    .select(
-      `
+    .select(`
         id,
         slug,
         player_name,
@@ -55,12 +56,15 @@ export default async function DashboardPage() {
         brand,
         price,
         image_url,
-        featured,
         stock,
-        created_at
-      `
-    )
-    .order("created_at", { ascending: false });
+        featured,
+        grade_company,
+        grade,
+        rookie_card,
+        autograph,
+        serial_number
+      `)
+      .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Dashboard loading error:", error);
@@ -89,9 +93,21 @@ export default async function DashboardPage() {
           0
         ) / totalListings
       : 0;
-
+      const averageQuantityPerListing =
+      totalListings > 0 ? totalQuantity / totalListings : 0;
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+      const cardsAddedThisWeek = inventory.filter((card) => {
+        if (!card.created_at) {
+          return false;
+        }
+    
+        return new Date(card.created_at) >= sevenDaysAgo;
+      }).length;
   const featuredCards = inventory.filter((card) => card.featured).length;
-
+  const featuredPercentage =
+    totalListings > 0 ? (featuredCards / totalListings) * 100 : 0;
   const healthyStockCards = inventory.filter(
     (card) => Number(card.stock ?? 0) >= 3
   );
@@ -259,124 +275,36 @@ const highestValueBrand =
 const highestValueYear =
   [...inventoryByYear].sort((a, b) => b.value - a.value)[0] ?? null;
   const topSport = inventoryBySport[0] ?? null;
-  const valueCategories = [
-    {
-      label: "Under $25",
-      quantity: inventory
-        .filter((card) => Number(card.price ?? 0) < 25)
-        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
-
-      value: inventory
-        .filter((card) => Number(card.price ?? 0) < 25)
-        .reduce(
-          (total, card) =>
-            total +
-            Number(card.price ?? 0) * Number(card.stock ?? 0),
-          0
-        ),
-    },
-    {
-      label: "$25–$99",
-      quantity: inventory
-        .filter(
-          (card) =>
-            Number(card.price ?? 0) >= 25 &&
-            Number(card.price ?? 0) < 100
-        )
-        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
-
-      value: inventory
-        .filter(
-          (card) =>
-            Number(card.price ?? 0) >= 25 &&
-            Number(card.price ?? 0) < 100
-        )
-        .reduce(
-          (total, card) =>
-            total +
-            Number(card.price ?? 0) * Number(card.stock ?? 0),
-          0
-        ),
-    },
-    {
-      label: "$100–$249",
-      quantity: inventory
-        .filter(
-          (card) =>
-            Number(card.price ?? 0) >= 100 &&
-            Number(card.price ?? 0) < 250
-        )
-        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
-
-      value: inventory
-        .filter(
-          (card) =>
-            Number(card.price ?? 0) >= 100 &&
-            Number(card.price ?? 0) < 250
-        )
-        .reduce(
-          (total, card) =>
-            total +
-            Number(card.price ?? 0) * Number(card.stock ?? 0),
-          0
-        ),
-    },
-    {
-      label: "$250+",
-      quantity: inventory
-        .filter((card) => Number(card.price ?? 0) >= 250)
-        .reduce((total, card) => total + Number(card.stock ?? 0), 0),
-
-      value: inventory
-        .filter((card) => Number(card.price ?? 0) >= 250)
-        .reduce(
-          (total, card) =>
-            total +
-            Number(card.price ?? 0) * Number(card.stock ?? 0),
-          0
-        ),
-    },
-  ];
   const dashboardStats = [
     {
-      label: "Total Listings",
-      value: totalListings,
-      description: "Unique card listings in your catalog",
+      label: "Inventory Value",
+      value: formatCurrency(inventoryValue),
+      description: "Total listed inventory value",
     },
     {
       label: "Total Card Quantity",
       value: totalQuantity,
-      description: "Total cards currently available",
+      description: "Total number of cards currently in stock",
     },
     {
-      label: "Inventory Value",
-      value: formatCurrency(inventoryValue),
-      description: "Total listed value based on current stock",
+      label: "Total Listings",
+      value: totalListings,
+      description: "Active inventory listings",
     },
     {
-      label: "Average Price",
-      value: formatCurrency(averagePrice),
-      description: "Average listed price per card",
+      label: "Cards Added This Week",
+      value: cardsAddedThisWeek,
+      description: "Listings added during the past seven days",
+    },
+    {
+      label: "Low Stock",
+      value: lowStockInventory.length,
+      description: "Listings with limited quantity remaining",
     },
     {
       label: "Featured Cards",
       value: featuredCards,
       description: "Cards displayed as featured inventory",
-    },
-    {
-      label: "Healthy Stock",
-      value: healthyStockCards.length,
-      description: "Listings with three or more cards available",
-    },
-    {
-      label: "Low Stock",
-      value: lowStockInventory.length,
-      description: "Listings with only one or two cards left",
-    },
-    {
-      label: "Out of Stock",
-      value: outOfStockInventory.length,
-      description: "Listings that currently have no inventory",
     },
   ];
 
@@ -406,161 +334,39 @@ const highestValueYear =
       ) : (
         <>
                     <DashboardStats stats={dashboardStats} />
+                    <DealerInsights
+  topSport={highestValueSport?.sport ?? "No data"}
+  topSportValue={highestValueSport?.value ?? 0}
+  topBrand={highestValueBrand?.brand ?? "No data"}
+  topBrandValue={highestValueBrand?.value ?? 0}
+  topYear={highestValueYear?.year ?? "No data"}
+  topYearValue={highestValueYear?.value ?? 0}
+  averagePrice={averagePrice}
+  averageQuantity={averageQuantityPerListing}
+  featuredPercentage={featuredPercentage}
+/>
+<InventoryValueChart data={inventoryBySport} />
+<div className="grid gap-6 xl:grid-cols-2">
+  <InventoryValueByBrandChart data={inventoryByBrand} />
+  <InventoryValueByYearChart data={inventoryByYear} />
+</div>
+<div className="grid gap-6 xl:grid-cols-2">
+  <StockHealthChart
+    healthy={healthyStockCards.length}
+    lowStock={lowStockInventory.length}
+    outOfStock={outOfStockInventory.length}
+  />
 
-                    <InventoryHealth
-            outOfStockInventory={outOfStockInventory}
-            lowStockInventory={lowStockInventory}
-            cardsMissingImages={cardsMissingImages}
-            highestValueCard={highestValueCard}
-            newestCard={newestCard}
-          />
-
-<InventoryBySport
-            inventoryBySport={inventoryBySport}
-            topSport={topSport}
-          />
-                    <InventoryByBrand
-            inventoryByBrand={inventoryByBrand}
-            topBrand={topBrand}
-          />
-                    <InventoryByYear inventoryByYear={inventoryByYear} />
-                    <InventoryValueByCategory valueCategories={valueCategories} />
-          <DashboardInventorySearch cards={inventory} />
-          <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-              <div className="flex items-center justify-between border-b border-white/10 p-6">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
-                    Recent Inventory
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-black text-white">
-                    Recently Added Cards
-                  </h2>
-                </div>
-
-                <Link
-                  href="/dashboard/inventory"
-                  className="text-sm font-bold text-green-400 transition hover:text-green-300"
-                >
-                  View All
-                </Link>
-              </div>
-
-              {recentCards.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="font-semibold text-white">
-                    No cards have been added yet.
-                  </p>
-
-                  <p className="mt-2 text-sm text-zinc-400">
-                    Add your first card to begin building your inventory.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-white/10">
-                  {recentCards.map((card) => {
-                    const stock = Number(card.stock ?? 0);
-
-                    return (
-                      <div
-                        key={card.id}
-                        className="flex items-center gap-4 p-5"
-                      >
-                        <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-black">
-                          {card.image_url ? (
-                            <img
-                              src={card.image_url}
-                              alt={`${card.player_name} card`}
-                              className="h-full w-full object-contain"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center px-1 text-center text-[9px] text-zinc-500">
-                              No image
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-white">
-                            {card.player_name}
-                          </p>
-
-                          <p className="mt-1 text-sm text-zinc-400">
-                            {card.year || "—"} {card.brand || ""}
-                          </p>
-
-                          <p className="mt-2 text-xs text-zinc-500">
-                            Stock: {stock}
-                          </p>
-                        </div>
-
-                        <div className="text-right">
-                          <p className="font-black text-white">
-                            {formatCurrency(Number(card.price ?? 0))}
-                          </p>
-
-                          <Link
-                            href={`/dashboard/inventory/${card.id}/edit`}
-                            className="mt-2 inline-block text-sm font-bold text-green-400 transition hover:text-green-300"
-                          >
-                            Edit
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-
-            <div className="grid gap-6">
-              <article className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
-                  Quick Action
-                </p>
-
-                <h2 className="mt-3 text-2xl font-black text-white">
-                  Add a New Card
-                </h2>
-
-                <p className="mt-3 text-zinc-400">
-                  Upload a card image and add a new listing to your inventory.
-                </p>
-
-                <Link
-                  href="/dashboard/inventory/add"
-                  className="mt-6 inline-flex rounded-lg bg-green-700 px-5 py-3 font-bold text-white transition hover:bg-green-600"
-                >
-                  + Add Card
-                </Link>
-              </article>
-
-              <article className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
-                  Inventory
-                </p>
-
-                <h2 className="mt-3 text-2xl font-black text-white">
-                  Manage Your Cards
-                </h2>
-
-                <p className="mt-3 text-zinc-400">
-                  Search cards, update stock, edit listings, and remove
-                  inventory.
-                </p>
-
-                <Link
-                  href="/dashboard/inventory"
-                  className="mt-6 inline-flex rounded-lg border border-white/15 px-5 py-3 font-bold text-white transition hover:border-green-500 hover:bg-green-500/10"
-                >
-                  View Inventory
-                </Link>
-              </article>
-            </div>
-          </section>
-        </>
-      )}
+  <DealerHighlights
+    highestValueCard={highestValueCard}
+    newestCard={newestCard}
+    missingImageCount={cardsMissingImages.length}
+  />
+</div>
+                    <DashboardInventorySearch inventory={inventory} />
+                  <RecentlyAddedCards cards={recentCards} />  
+                  </>
+                )}
     </div>
   );
 }

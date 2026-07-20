@@ -32,13 +32,14 @@ export default async function EditCardPage({
         grade,
         price,
         image_url,
+        back_image_url,
         featured,
         rookie_card,
         autograph,
         serial_number,
         stock,
         condition_notes
-      `
+      `,
     )
     .eq("id", id)
     .maybeSingle();
