@@ -54,12 +54,12 @@ export default function InventoryValueByBrandChart({
 
             <YAxis
               stroke="#d4d4d8"
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => `$${Number(value)}`}
             />
 
             <Tooltip
-              formatter={(value: number) => [
-                `$${value.toLocaleString()}`,
+              formatter={(value) => [
+                `$${Number(value ?? 0).toLocaleString()}`,
                 "Inventory Value",
               ]}
             />

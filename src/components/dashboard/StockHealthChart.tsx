@@ -78,11 +78,11 @@ export default function StockHealthChart({
               </Pie>
 
               <Tooltip
-                formatter={(value: number) => [
-                  value,
-                  "Listings",
-                ]}
-              />
+  formatter={(value) => [
+    Number(value ?? 0),
+    "Listings",
+  ]}
+/>
 
               <Legend />
             </PieChart>

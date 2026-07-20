@@ -69,6 +69,10 @@ export default function RecentlyAddedCards({
   grade_company={card.grade_company}
   grade={card.grade}
   rookie_card={card.rookie_card}
+  featured={card.featured}
+  autograph={card.autograph}
+  serial_number={card.serial_number}
+  slug={card.slug}
 />
             </Link>
           ))}

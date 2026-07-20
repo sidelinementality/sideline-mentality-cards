@@ -13,18 +13,23 @@ import LowInventoryAlerts from "@/components/dashboard/LowInventoryAlerts";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import DealerSalesStats from "@/components/dashboard/DealerSalesStats";
 type Card = {
-  id: string;
-  slug: string;
-  player_name: string;
-  sport: string | null;
-  year: number | null;
-  brand: string | null;
-  price: number | string | null;
-  image_url: string | null;
-  featured: boolean | null;
-  stock: number | null;
-  created_at: string | null;
-};
+    id: string;
+    slug: string;
+    player_name: string;
+    sport: string | null;
+    year: number | null;
+    brand: string | null;
+    price: number | string | null;
+    image_url: string | null;
+    featured: boolean | null;
+    stock: number | null;
+    created_at: string | null;
+    grade_company: string | null;
+    grade: string | null;
+    rookie_card: boolean | null;
+    autograph: boolean | null;
+    serial_number: string | null;
+  };
 
 type SportSummary = {
   sport: string;
@@ -63,9 +68,10 @@ export default async function DashboardPage() {
         featured,
         grade_company,
         grade,
-        rookie_card,
+                rookie_card,
         autograph,
-        serial_number
+        serial_number,
+        created_at
       `)
       .order("created_at", { ascending: false });
 
@@ -514,7 +520,7 @@ const highestValueYear =
   soldOutCards={outOfStockInventory}
 />
 
-<DashboardInventorySearch inventory={inventory} />
+<DashboardInventorySearch cards={inventory} />
 
 <RecentlyAddedCards cards={recentCards} />
                   </>

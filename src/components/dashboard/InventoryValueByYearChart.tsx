@@ -53,12 +53,12 @@ export default function InventoryValueByYearChart({
               tickFormatter={(value) => `$${value}`}
             />
 
-            <Tooltip
-              formatter={(value: number) => [
-                `$${value.toLocaleString()}`,
-                "Inventory Value",
-              ]}
-            />
+<Tooltip
+  formatter={(value) => [
+    `$${Number(value ?? 0).toLocaleString()}`,
+    "Inventory Value",
+  ]}
+/>
 
             <Bar
               dataKey="value"

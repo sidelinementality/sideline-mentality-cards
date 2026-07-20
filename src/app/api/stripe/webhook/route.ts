@@ -4,19 +4,6 @@ import { createOrder } from "@/lib/order-service";
 
 export const runtime = "nodejs";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-if (!stripeSecretKey) {
-  throw new Error("STRIPE_SECRET_KEY is missing.");
-}
-
-if (!webhookSecret) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is missing.");
-}
-
-const stripe = new Stripe(stripeSecretKey);
-
 type PurchasedItem = {
   id: string;
   slug: string;
@@ -26,7 +13,28 @@ type PurchasedItem = {
   price: number;
 };
 
+function getStripe() {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_SECRET_KEY is missing.");
+  }
+
+  return new Stripe(stripeSecretKey);
+}
+
 export async function POST(request: Request) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error("STRIPE_WEBHOOK_SECRET is missing.");
+
+    return NextResponse.json(
+      { error: "Stripe webhook is not configured." },
+      { status: 500 },
+    );
+  }
+
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
@@ -41,6 +49,8 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
+    const stripe = getStripe();
+
     event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -59,7 +69,6 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-
         const cartMetadata = session.metadata?.cart;
 
         if (!cartMetadata) {
@@ -67,37 +76,26 @@ export async function POST(request: Request) {
         }
 
         const items = JSON.parse(cartMetadata) as PurchasedItem[];
+        const shipping = session.customer_details?.address;
 
-        const shipping =
-          session.customer_details?.address;
+        const subtotal = session.amount_subtotal
+          ? session.amount_subtotal / 100
+          : 0;
 
-        const subtotal =
-          session.amount_subtotal
-            ? session.amount_subtotal / 100
-            : 0;
-
-        const total =
-          session.amount_total
-            ? session.amount_total / 100
-            : 0;
+        const total = session.amount_total
+          ? session.amount_total / 100
+          : 0;
 
         const shippingCost = total - subtotal;
 
         await createOrder({
-          customerName:
-            session.customer_details?.name ?? null,
-          customerEmail:
-            session.customer_details?.email ?? null,
-          customerPhone:
-            session.customer_details?.phone ?? null,
-          shippingAddress:
-            shipping?.line1 ?? null,
-          city:
-            shipping?.city ?? null,
-          state:
-            shipping?.state ?? null,
-          zipCode:
-            shipping?.postal_code ?? null,
+          customerName: session.customer_details?.name ?? null,
+          customerEmail: session.customer_details?.email ?? null,
+          customerPhone: session.customer_details?.phone ?? null,
+          shippingAddress: shipping?.line1 ?? null,
+          city: shipping?.city ?? null,
+          state: shipping?.state ?? null,
+          zipCode: shipping?.postal_code ?? null,
           subtotal,
           shippingCost,
           tax: 0,
