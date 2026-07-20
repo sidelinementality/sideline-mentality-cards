@@ -9,6 +9,9 @@ import InventoryValueByYearChart from "@/components/dashboard/InventoryValueByYe
 import StockHealthChart from "@/components/dashboard/StockHealthChart";
 import DealerHighlights from "@/components/dashboard/DealerHighlights";
 import RecentlyAddedCards from "@/components/dashboard/RecentlyAddedCards";
+import LowInventoryAlerts from "@/components/dashboard/LowInventoryAlerts";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import DealerSalesStats from "@/components/dashboard/DealerSalesStats";
 type Card = {
   id: string;
   slug: string;
@@ -70,7 +73,147 @@ export default async function DashboardPage() {
     console.error("Dashboard loading error:", error);
   }
 
+  const { data: orders, error: ordersError } =
+  await supabaseAdmin
+    .from("orders")
+    .select(
+      `
+        total,
+        payment_status,
+        fulfillment_status,
+        created_at
+      `,
+    );
+
   const inventory = (cards ?? []) as Card[];
+  const salesOrders = orders ?? [];
+
+const totalRevenue = salesOrders.reduce(
+  (sum, order) => sum + Number(order.total ?? 0),
+  0,
+);
+
+const paidOrders = salesOrders.filter(
+  (order) =>
+    order.payment_status?.toLowerCase() === "paid",
+).length;
+
+const pendingFulfillmentOrders =
+  salesOrders.filter(
+    (order) =>
+      order.fulfillment_status?.toLowerCase() ===
+      "pending",
+  ).length;
+
+const averageOrderValue =
+  paidOrders > 0
+    ? totalRevenue / paidOrders
+    : 0;
+    const now = new Date();
+
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    );
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const revenueToday = salesOrders
+      .filter((order) => {
+        if (order.payment_status?.toLowerCase() !== "paid") {
+          return false;
+        }
+    
+        return new Date(order.created_at) >= startOfToday;
+      })
+      .reduce(
+        (sum, order) => sum + Number(order.total ?? 0),
+        0,
+      );
+    
+    const revenueThisMonth = salesOrders
+      .filter((order) => {
+        if (order.payment_status?.toLowerCase() !== "paid") {
+          return false;
+        }
+    
+        return new Date(order.created_at) >= startOfMonth;
+      })
+      .reduce(
+        (sum, order) => sum + Number(order.total ?? 0),
+        0,
+      );
+    
+    const revenueLast7Days = salesOrders
+      .filter((order) => {
+        if (order.payment_status?.toLowerCase() !== "paid") {
+          return false;
+        }
+    
+        return new Date(order.created_at) >= sevenDaysAgo;
+      })
+      .reduce(
+        (sum, order) => sum + Number(order.total ?? 0),
+        0,
+      );
+    
+    const ordersThisMonth = salesOrders.filter((order) => {
+      if (order.payment_status?.toLowerCase() !== "paid") {
+        return false;
+      }
+    
+      return new Date(order.created_at) >= startOfMonth;
+    }).length;
+    const dealerSalesStats = [
+        {
+          label: "Total Revenue",
+          value: formatCurrency(totalRevenue),
+          description: "All completed sales",
+        },
+        {
+          label: "Paid Orders",
+          value: paidOrders,
+          description: "Successfully paid orders",
+        },
+        {
+          label: "Average Order",
+          value: formatCurrency(averageOrderValue),
+          description: "Average revenue per paid order",
+        },
+        {
+          label: "Pending Fulfillment",
+          value: pendingFulfillmentOrders,
+          description: "Orders awaiting fulfillment",
+        },
+        {
+          label: "Revenue Today",
+          value: formatCurrency(revenueToday),
+          description: "Paid sales recorded today",
+        },
+        {
+          label: "Last 7 Days",
+          value: formatCurrency(revenueLast7Days),
+          description: "Paid revenue during the past seven days",
+        },
+        {
+          label: "Revenue This Month",
+          value: formatCurrency(revenueThisMonth),
+          description: "Paid revenue during the current month",
+        },
+        {
+          label: "Orders This Month",
+          value: ordersThisMonth,
+          description: "Paid orders during the current month",
+        },
+      ];
 
   const totalListings = inventory.length;
 
@@ -95,8 +238,10 @@ export default async function DashboardPage() {
       : 0;
       const averageQuantityPerListing =
       totalListings > 0 ? totalQuantity / totalListings : 0;
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoSales = new Date();
+sevenDaysAgoSales.setDate(
+  sevenDaysAgoSales.getDate() - 7,
+);
     
       const cardsAddedThisWeek = inventory.filter((card) => {
         if (!card.created_at) {
@@ -108,15 +253,15 @@ export default async function DashboardPage() {
   const featuredCards = inventory.filter((card) => card.featured).length;
   const featuredPercentage =
     totalListings > 0 ? (featuredCards / totalListings) * 100 : 0;
-  const healthyStockCards = inventory.filter(
-    (card) => Number(card.stock ?? 0) >= 3
-  );
-
-  const lowStockInventory = inventory.filter((card) => {
-    const stock = Number(card.stock ?? 0);
-
-    return stock > 0 && stock <= 2;
-  });
+    const healthyStockCards = inventory.filter(
+        (card) => Number(card.stock ?? 0) >= 4
+      );
+      
+      const lowStockInventory = inventory.filter((card) => {
+        const stock = Number(card.stock ?? 0);
+      
+        return stock > 0 && stock <= 3;
+      });
 
   const outOfStockInventory = inventory.filter(
     (card) => Number(card.stock ?? 0) === 0
@@ -333,6 +478,7 @@ const highestValueYear =
         </section>
       ) : (
         <>
+        <DealerSalesStats stats={dealerSalesStats} />
                     <DashboardStats stats={dashboardStats} />
                     <DealerInsights
   topSport={highestValueSport?.sport ?? "No data"}
@@ -363,8 +509,14 @@ const highestValueYear =
     missingImageCount={cardsMissingImages.length}
   />
 </div>
-                    <DashboardInventorySearch inventory={inventory} />
-                  <RecentlyAddedCards cards={recentCards} />  
+<LowInventoryAlerts
+  lowStockCards={lowStockInventory}
+  soldOutCards={outOfStockInventory}
+/>
+
+<DashboardInventorySearch inventory={inventory} />
+
+<RecentlyAddedCards cards={recentCards} />
                   </>
                 )}
     </div>

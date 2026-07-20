@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useCart } from "./CartProvider";
 
+type CheckoutResponse = {
+  url?: string;
+  error?: string;
+};
+
 export default function CheckoutButton() {
   const { items } = useCart();
 
@@ -14,7 +19,7 @@ export default function CheckoutButton() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/checkout", {
+      const response = await fetch("/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,11 +32,17 @@ export default function CheckoutButton() {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as CheckoutResponse;
 
       if (!response.ok) {
         throw new Error(
-          data.error || "Unable to start checkout."
+          data.error || "Unable to start checkout.",
+        );
+      }
+
+      if (!data.url) {
+        throw new Error(
+          "Stripe did not return a checkout address.",
         );
       }
 
@@ -40,8 +51,9 @@ export default function CheckoutButton() {
       setError(
         err instanceof Error
           ? err.message
-          : "Checkout failed."
+          : "Checkout failed.",
       );
+
       setLoading(false);
     }
   }
@@ -49,6 +61,7 @@ export default function CheckoutButton() {
   return (
     <>
       <button
+        type="button"
         onClick={handleCheckout}
         disabled={loading || items.length === 0}
         className="w-full rounded-xl bg-green-700 py-4 font-black text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-zinc-300"
@@ -56,11 +69,11 @@ export default function CheckoutButton() {
         {loading ? "Redirecting..." : "Secure Checkout"}
       </button>
 
-      {error && (
+      {error ? (
         <p className="mt-3 text-center text-sm font-semibold text-red-600">
           {error}
         </p>
-      )}
+      ) : null}
     </>
   );
 }

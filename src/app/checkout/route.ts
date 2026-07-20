@@ -203,8 +203,45 @@ export async function POST(request: Request) {
       phone_number_collection: {
         enabled: true,
       },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: {
+              amount: 399,
+              currency: "usd",
+            },
+            display_name: "Standard Shipping",
+            delivery_estimate: {
+              minimum: {
+                unit: "business_day",
+                value: 3,
+              },
+              maximum: {
+                unit: "business_day",
+                value: 7,
+              },
+            },
+          },
+        },
+      ],
       metadata: {
-        cart: JSON.stringify(validRequestedItems),
+        cart: JSON.stringify(
+          validRequestedItems.map((requestedItem) => {
+            const card = cards.find(
+              (currentCard) => currentCard.id === requestedItem.id,
+            );
+      
+            return {
+              id: card!.id,
+              slug: card!.slug,
+              playerName: card!.player_name,
+              imageUrl: card!.image_url,
+              price: Number(card!.price),
+              quantity: requestedItem.quantity,
+            };
+          }),
+        ),
       },
     });
 
