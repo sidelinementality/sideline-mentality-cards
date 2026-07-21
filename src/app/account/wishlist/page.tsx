@@ -23,6 +23,12 @@ type WishlistItem = {
   cards: WishlistCard | null;
 };
 
+type WishlistQueryItem = {
+  id: string;
+  created_at: string;
+  cards: WishlistCard[] | WishlistCard | null;
+};
+
 export default async function WishlistPage() {
   const supabase = await createSupabaseServerClient();
 
@@ -62,7 +68,17 @@ export default async function WishlistPage() {
     console.error("Wishlist lookup error:", error);
   }
 
-  const wishlistItems = (data ?? []) as WishlistItem[];
+  const rawWishlistItems =
+    (data ?? []) as WishlistQueryItem[];
+
+  const wishlistItems: WishlistItem[] =
+    rawWishlistItems.map((item) => ({
+      id: item.id,
+      created_at: item.created_at,
+      cards: Array.isArray(item.cards)
+        ? item.cards[0] ?? null
+        : item.cards,
+    }));
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 sm:py-16">
