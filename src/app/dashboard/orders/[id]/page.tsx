@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import DealerActions from "@/components/orders/DealerActions";
+import TrackingForm from "@/components/orders/TrackingForm";
 
 type OrderDetailsPageProps = {
   params: Promise<{
@@ -18,6 +19,9 @@ type Order = {
   payment_status: string | null;
   fulfillment_status: string | null;
   stripe_payment_intent: string | null;
+  shipping_carrier: string | null;
+tracking_number: string | null;
+shipped_at: string | null;
   created_at: string | null;
 };
 
@@ -96,8 +100,11 @@ export default async function OrderDetailsPage({
           total,
           payment_status,
           fulfillment_status,
-          stripe_payment_intent,
-          created_at
+stripe_payment_intent,
+shipping_carrier,
+tracking_number,
+shipped_at,
+created_at
         `,
       )
       .eq("id", id)
@@ -394,6 +401,13 @@ export default async function OrderDetailsPage({
             </div>
           ) : null}
         </section>
+        <div className="mt-6">
+  <TrackingForm
+    orderId={order.id}
+    currentCarrier={order.shipping_carrier}
+    currentTrackingNumber={order.tracking_number}
+  />
+</div>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
   <Link
     href={`/dashboard/orders/print/${order.id}`}

@@ -1,5 +1,13 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import OrdersSearch from "@/components/orders/OrdersSearch";
+
+type OrdersPageProps = {
+  searchParams: Promise<{
+    search?: string;
+    status?: string;
+  }>;
+};
 
 type Order = {
   id: string;
@@ -58,7 +66,11 @@ function getStatusClasses(status: string | null) {
   return "border-white/10 bg-white/5 text-neutral-300";
 }
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: OrdersPageProps) {
+  const { search = "", status = "all" } = await searchParams;
+
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
@@ -78,6 +90,28 @@ export default async function OrdersPage() {
 
   const orders = (data ?? []) as Order[];
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const normalizedStatus = status.trim().toLowerCase();
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      order.id.toLowerCase().includes(normalizedSearch) ||
+      order.customer_name
+        ?.toLowerCase()
+        .includes(normalizedSearch) ||
+      order.customer_email
+        ?.toLowerCase()
+        .includes(normalizedSearch);
+
+    const matchesStatus =
+      normalizedStatus === "all" ||
+      order.fulfillment_status?.toLowerCase() ===
+        normalizedStatus;
+
+    return matchesSearch && matchesStatus;
+  });
+
   const totalRevenue = orders.reduce(
     (sum, order) => sum + Number(order.total ?? 0),
     0,
@@ -87,6 +121,9 @@ export default async function OrdersPage() {
     (order) =>
       order.fulfillment_status?.toLowerCase() === "pending",
   ).length;
+
+  const filtersAreActive =
+    normalizedSearch.length > 0 || normalizedStatus !== "all";
 
   return (
     <main className="min-h-screen bg-neutral-950 px-5 py-10 text-white sm:px-8">
@@ -147,9 +184,31 @@ export default async function OrdersPage() {
           </div>
         </section>
 
+        <OrdersSearch />
+
+        {!error ? (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-neutral-400">
+              Showing{" "}
+              <span className="font-bold text-white">
+                {filteredOrders.length}
+              </span>{" "}
+              {filteredOrders.length === 1 ? "order" : "orders"}
+            </p>
+
+            {filtersAreActive ? (
+              <p className="text-sm text-green-400">
+                Filters applied
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {error ? (
           <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-200">
-            <p className="font-bold">Orders could not be loaded.</p>
+            <p className="font-bold">
+              Orders could not be loaded.
+            </p>
 
             <p className="mt-2 text-sm">{error.message}</p>
           </div>
@@ -168,7 +227,28 @@ export default async function OrdersPage() {
           </div>
         ) : null}
 
-        {!error && orders.length > 0 ? (
+        {!error &&
+        orders.length > 0 &&
+        filteredOrders.length === 0 ? (
+          <div className="mt-8 rounded-3xl border border-dashed border-white/15 bg-white/5 px-6 py-16 text-center">
+            <h2 className="text-2xl font-black">
+              No matching orders
+            </h2>
+
+            <p className="mt-3 text-neutral-400">
+              Try changing your search or fulfillment filter.
+            </p>
+
+            <Link
+              href="/dashboard/orders"
+              className="mt-6 inline-flex rounded-xl bg-green-500 px-5 py-3 text-sm font-black text-black transition hover:bg-green-400"
+            >
+              Clear Filters
+            </Link>
+          </div>
+        ) : null}
+
+        {!error && filteredOrders.length > 0 ? (
           <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-white/5">
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -178,7 +258,9 @@ export default async function OrdersPage() {
                     <th className="px-6 py-4">Customer</th>
                     <th className="px-6 py-4">Total</th>
                     <th className="px-6 py-4">Payment</th>
-                    <th className="px-6 py-4">Fulfillment</th>
+                    <th className="px-6 py-4">
+                      Fulfillment
+                    </th>
                     <th className="px-6 py-4 text-right">
                       Actions
                     </th>
@@ -186,14 +268,17 @@ export default async function OrdersPage() {
                 </thead>
 
                 <tbody className="divide-y divide-white/10">
-                  {orders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <tr
                       key={order.id}
                       className="transition hover:bg-white/[0.03]"
                     >
                       <td className="px-6 py-5">
                         <p className="font-bold">
-                          #{order.id.slice(0, 8).toUpperCase()}
+                          #
+                          {order.id
+                            .slice(0, 8)
+                            .toUpperCase()}
                         </p>
 
                         <p className="mt-1 text-sm text-neutral-500">
@@ -233,7 +318,8 @@ export default async function OrdersPage() {
                             order.fulfillment_status,
                           )}`}
                         >
-                          {order.fulfillment_status || "unknown"}
+                          {order.fulfillment_status ||
+                            "unknown"}
                         </span>
                       </td>
 
