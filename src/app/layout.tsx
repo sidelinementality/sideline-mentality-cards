@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const GOOGLE_ANALYTICS_ID = "G-1YGGGRYLQ2";
+const GOOGLE_ANALYTICS_ID = "G-KQ40TZCC26";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
