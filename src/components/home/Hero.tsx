@@ -37,11 +37,35 @@ export default function Hero() {
             </a>
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-6 text-sm font-semibold text-gray-400">
-            <span>Authenticated Inventory</span>
-            <span>Fast Shipping</span>
-            <span>Collector Owned</span>
-          </div>
+          <div className="mt-12 grid max-w-2xl grid-cols-2 gap-5 sm:grid-cols-4">
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur">
+    <p className="text-2xl font-black text-green-400">500+</p>
+    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      Cards
+    </p>
+  </div>
+
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur">
+    <p className="text-2xl font-black text-green-400">24hr</p>
+    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      Shipping
+    </p>
+  </div>
+
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur">
+    <p className="text-2xl font-black text-green-400">100%</p>
+    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      Secure Checkout
+    </p>
+  </div>
+
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur">
+    <p className="text-2xl font-black text-green-400">★★★★★</p>
+    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      Collector Owned
+    </p>
+  </div>
+</div>
         </div>
 
         <div className="flex justify-center lg:justify-end">

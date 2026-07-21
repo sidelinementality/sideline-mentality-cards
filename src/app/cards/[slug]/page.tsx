@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import CardImageGallery from "@/components/cards/CardImageGallery";
 import RelatedCards from "@/components/cards/RelatedCards";
+import WishlistButton from "@/components/wishlist/WishlistButton";
 import { supabase } from "@/lib/supabase";
 
 type CardPageProps = {
@@ -16,29 +18,33 @@ type DetailRowProps = {
   value: string | number | null;
 };
 
-function DetailRow({ label, value }: DetailRowProps) {
-  if (value === null || value === "") {
-    return null;
-  }
+type CardRecord = {
+  id: string;
+  slug: string;
+  player_name: string;
+  sport: string | null;
+  team: string | null;
+  year: number | null;
+  brand: string | null;
+  set_name: string | null;
+  card_number: string | null;
+  grade_company: string | null;
+  grade: string | null;
+  price: number | string | null;
+  image_url: string | null;
+  back_image_url: string | null;
+  rookie_card: boolean | null;
+  autograph: boolean | null;
+  serial_number: string | null;
+  stock: number | null;
+  condition_notes: string | null;
+};
 
-  return (
-    <div className="flex items-start justify-between gap-6 border-b border-zinc-200 py-3 last:border-b-0">
-      <dt className="font-bold text-slate-500">
-        {label}
-      </dt>
+const SITE_URL = "https://www.sidelinementality.com";
 
-      <dd className="text-right font-black text-slate-950">
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-export default async function CardPage({
-  params,
-}: CardPageProps) {
-  const { slug } = await params;
-
+async function getCardBySlug(
+  slug: string,
+): Promise<CardRecord | null> {
   const { data: card, error } = await supabase
     .from("cards")
     .select(
@@ -68,8 +74,154 @@ export default async function CardPage({
     .maybeSingle();
 
   if (error) {
-    console.error("Card lookup error:", error);
+    console.error("Card lookup error:", error.message);
+    return null;
   }
+
+  return card as CardRecord | null;
+}
+
+function formatCurrency(value: number | string | null) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
+
+function buildCardTitle(card: CardRecord) {
+  return [
+    card.year,
+    card.brand,
+    card.player_name,
+    card.rookie_card ? "Rookie Card" : null,
+    card.autograph ? "Autograph" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function buildCardDescription(card: CardRecord) {
+  const price = formatCurrency(card.price);
+
+  const details = [
+    card.year,
+    card.brand,
+    card.set_name,
+    card.player_name,
+    card.sport ? `${card.sport} card` : "sports card",
+    card.grade_company && card.grade
+      ? `graded ${card.grade_company} ${card.grade}`
+      : null,
+    card.rookie_card ? "rookie card" : null,
+    card.autograph ? "autograph card" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `Shop this ${details}${
+    price ? ` for ${price}` : ""
+  } from Sideline Mentality Cards. Real card photos, secure checkout, and careful shipping.`;
+}
+
+export async function generateMetadata({
+  params,
+}: CardPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const card = await getCardBySlug(slug);
+
+  if (!card) {
+    return {
+      title: "Card Not Found",
+      description:
+        "This sports card listing could not be found.",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const title = buildCardTitle(card);
+  const description = buildCardDescription(card);
+  const cardUrl = `${SITE_URL}/cards/${card.slug}`;
+
+  const socialImages = card.image_url
+    ? [
+        {
+          url: card.image_url,
+          alt: `${title} available from Sideline Mentality Cards`,
+        },
+      ]
+    : undefined;
+
+  return {
+    title,
+    description,
+
+    alternates: {
+      canonical: cardUrl,
+    },
+
+    openGraph: {
+      type: "website",
+      url: cardUrl,
+      siteName: "Sideline Mentality Cards",
+      title,
+      description,
+      images: socialImages,
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: card.image_url
+        ? [card.image_url]
+        : undefined,
+    },
+
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+  };
+}
+
+function DetailRow({ label, value }: DetailRowProps) {
+    if (value === null || value === "") {
+      return null;
+    }
+  
+    return (
+      <div className="flex items-start justify-between gap-6 border-b border-zinc-200 py-3 last:border-b-0">
+        <dt className="font-bold text-slate-500">
+          {label}
+        </dt>
+  
+        <dd className="text-right font-black text-slate-950">
+          {value}
+        </dd>
+      </div>
+    );
+  }
+
+export default async function CardPage({
+  params,
+}: CardPageProps) {
+  const { slug } = await params;
+  const card = await getCardBySlug(slug);
 
   if (!card) {
     notFound();
@@ -101,7 +253,7 @@ export default async function CardPage({
   if (relatedCardsError) {
     console.error(
       "Related cards lookup error:",
-      relatedCardsError,
+      relatedCardsError.message,
     );
   }
 
@@ -117,9 +269,51 @@ export default async function CardPage({
   const sportLink = card.sport
     ? `/shop?sport=${encodeURIComponent(card.sport)}`
     : "/shop";
-
+    
+      const productStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: buildCardTitle(card),
+        description: buildCardDescription(card),
+        image: card.image_url ? [card.image_url] : undefined,
+        sku: card.card_number || card.id,
+        brand: {
+          "@type": "Brand",
+          name: card.brand || "Sideline Mentality Cards",
+        },
+        category: card.sport
+          ? `${card.sport} Trading Card`
+          : "Sports Trading Card",
+        offers: {
+          "@type": "Offer",
+          url: `${SITE_URL}/cards/${card.slug}`,
+          priceCurrency: "USD",
+          price: Number.isFinite(price)
+            ? price.toFixed(2)
+            : "0.00",
+          availability: isInStock
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          itemCondition: "https://schema.org/UsedCondition",
+          seller: {
+            "@type": "Organization",
+            name: "Sideline Mentality Cards",
+          },
+        },
+      };
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 sm:py-16">
+
+              <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productStructuredData).replace(
+            /</g,
+            "\\u003c",
+          ),
+        }}
+      />
+
       <div className="mx-auto max-w-6xl">
         <nav
           aria-label="Breadcrumb"
@@ -132,7 +326,10 @@ export default async function CardPage({
             Home
           </Link>
 
-          <span aria-hidden="true" className="text-zinc-400">
+          <span
+            aria-hidden="true"
+            className="text-zinc-400"
+          >
             /
           </span>
 
@@ -161,7 +358,10 @@ export default async function CardPage({
             </>
           )}
 
-          <span aria-hidden="true" className="text-zinc-400">
+          <span
+            aria-hidden="true"
+            className="text-zinc-400"
+          >
             /
           </span>
 
@@ -202,7 +402,9 @@ export default async function CardPage({
             </h1>
 
             <p className="mt-4 text-lg font-bold text-slate-500">
-              {card.year} {card.brand}
+              {[card.year, card.brand]
+                .filter(Boolean)
+                .join(" ")}
             </p>
 
             {card.set_name && (
@@ -243,18 +445,22 @@ export default async function CardPage({
                 : "This card is currently unavailable"}
             </p>
 
-            <AddToCartButton
-  card={{
-    id: card.id,
-    slug: card.slug,
-    playerName: card.player_name,
-    year: card.year,
-    brand: card.brand,
-    price: Number.isFinite(price) ? price : 0,
-    imageUrl: card.image_url,
-    availableStock: stock,
-  }}
-/>
+            <div className="mt-6 space-y-3">
+              <AddToCartButton
+                card={{
+                  id: card.id,
+                  slug: card.slug,
+                  playerName: card.player_name,
+                  year: card.year,
+                  brand: card.brand,
+                  price: Number.isFinite(price) ? price : 0,
+                  imageUrl: card.image_url,
+                  availableStock: stock,
+                }}
+              />
+
+              <WishlistButton cardId={card.id} />
+            </div>
 
             <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
               <h2 className="text-lg font-black text-slate-950">

@@ -8,7 +8,6 @@ type Card = {
   sport: string | null;
   price: number | string | null;
   image_url: string | null;
-  featured: boolean | null;
   brand: string | null;
   year: string | number | null;
   stock: number | null;
@@ -31,7 +30,7 @@ function formatCurrency(value: number | string | null) {
   }).format(price);
 }
 
-export default async function FeaturedInventory() {
+export default async function NewArrivals() {
   const { data: cards, error } = await supabase
     .from("cards")
     .select(
@@ -42,7 +41,6 @@ export default async function FeaturedInventory() {
         sport,
         price,
         image_url,
-        featured,
         brand,
         year,
         stock,
@@ -52,62 +50,54 @@ export default async function FeaturedInventory() {
         grade
       `,
     )
-    .eq("featured", true)
+    .gt("stock", 0)
     .order("created_at", { ascending: false })
     .limit(4);
 
   if (error) {
-    console.error("Featured inventory error:", error);
+    console.error("New arrivals error:", error);
   }
 
   return (
-    <section
-      id="featured"
-      className="relative overflow-hidden bg-neutral-950 px-6 py-24 text-white"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.08),transparent_30%)]" />
-
-      <div className="relative mx-auto max-w-7xl">
+    <section className="bg-white px-6 py-24 text-neutral-950">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.3em] text-green-400">
-              Featured Inventory
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-green-700">
+              Just Added
             </p>
 
-            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-              Standout cards for serious collectors
+            <h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
+              New Arrivals
             </h2>
 
-            <p className="mt-4 max-w-2xl leading-7 text-neutral-400">
-              Explore hand-selected cards from across the hobby, including
-              rookies, autographs, graded cards, and collector favorites.
+            <p className="mt-4 max-w-2xl leading-7 text-neutral-600">
+              Explore the newest cards added to Sideline Mentality Cards.
+              Inventory updates automatically as new cards are listed.
             </p>
           </div>
 
           <Link
-            href="/shop"
-            className="inline-flex w-fit items-center justify-center rounded-full border border-green-500/50 px-6 py-3 text-sm font-black text-green-400 transition hover:border-green-400 hover:bg-green-500 hover:text-black"
+            href="/shop?sort=newest"
+            className="inline-flex w-fit items-center justify-center rounded-full border border-neutral-300 px-6 py-3 text-sm font-black text-neutral-950 transition hover:border-green-700 hover:bg-green-700 hover:text-white"
           >
-            View All Cards →
+            Shop New Arrivals →
           </Link>
         </div>
 
         {!cards || cards.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
-            <p className="text-lg font-bold text-white">
-              No featured cards are available yet.
-            </p>
+          <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-10 text-center">
+            <p className="text-lg font-black">No new arrivals yet.</p>
 
-            <p className="mt-2 text-sm text-neutral-400">
-              Mark cards as featured in the Dealer Center to display them here.
+            <p className="mt-2 text-sm text-neutral-600">
+              New inventory will appear here automatically.
             </p>
           </div>
         ) : (
           <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-4">
             {(cards as Card[]).map((card) => {
               const stock = Number(card.stock ?? 0);
-              const isSoldOut = stock <= 0;
-              const isLowStock = stock > 0 && stock <= 3;
+              const isLowStock = stock <= 3;
 
               const gradeLabel =
                 card.grade_company && card.grade
@@ -117,13 +107,17 @@ export default async function FeaturedInventory() {
               return (
                 <article
                   key={card.id}
-                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.03] shadow-2xl transition duration-300 hover:-translate-y-2 hover:border-green-500/40 hover:shadow-green-500/10"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition duration-300 hover:-translate-y-2 hover:border-green-700/30 hover:shadow-2xl"
                 >
                   <Link
                     href={`/cards/${card.slug}`}
-                    className="relative block aspect-[4/5] overflow-hidden bg-gradient-to-br from-neutral-900 via-black to-green-950 p-5"
+                    className="relative block aspect-[4/5] overflow-hidden bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-5"
                   >
                     <div className="absolute left-4 top-4 z-20 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-green-500 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-black shadow-lg">
+                        New
+                      </span>
+
                       {card.rookie_card && (
                         <span className="rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-lg">
                           Rookie
@@ -133,12 +127,6 @@ export default async function FeaturedInventory() {
                       {card.autograph && (
                         <span className="rounded-full bg-purple-500 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-lg">
                           Auto
-                        </span>
-                      )}
-
-                      {isSoldOut && (
-                        <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-lg">
-                          Sold Out
                         </span>
                       )}
 
@@ -153,9 +141,7 @@ export default async function FeaturedInventory() {
                       <img
                         src={card.image_url}
                         alt={`${card.player_name} sports card`}
-                        className={`h-full w-full rounded-2xl object-contain transition duration-500 group-hover:scale-110 group-hover:rotate-[1deg] ${
-                          isSoldOut ? "opacity-60" : ""
-                        }`}
+                        className="h-full w-full rounded-2xl object-contain transition duration-500 group-hover:scale-110 group-hover:rotate-[1deg]"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-6 text-center">
@@ -174,55 +160,51 @@ export default async function FeaturedInventory() {
 
                   <div className="flex flex-1 flex-col p-5">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-green-400">
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-green-700">
                         {card.sport || "Sports Card"}
                       </p>
 
                       {gradeLabel && (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-neutral-300">
+                        <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-neutral-700">
                           {gradeLabel}
                         </span>
                       )}
                     </div>
 
-                    <h3 className="mt-3 text-xl font-black leading-tight text-white">
+                    <h3 className="mt-3 text-xl font-black leading-tight">
                       {card.player_name}
                     </h3>
 
-                    <p className="mt-2 text-sm text-neutral-400">
+                    <p className="mt-2 text-sm text-neutral-500">
                       {[card.year, card.brand].filter(Boolean).join(" • ")}
                     </p>
 
                     <div className="mt-4">
-                      {isSoldOut ? (
-                        <p className="text-sm font-bold text-red-400">
-                          Currently unavailable
-                        </p>
-                      ) : isLowStock ? (
-                        <p className="text-sm font-bold text-amber-400">
+                      {isLowStock ? (
+                        <p className="text-sm font-bold text-amber-600">
                           Low Stock — Only {stock} Left
                         </p>
                       ) : (
-                        <p className="text-sm font-bold text-green-400">
+                        <p className="text-sm font-bold text-green-700">
                           In Stock
                         </p>
                       )}
                     </div>
 
-                    <div className="mt-auto flex items-end justify-between gap-4 border-t border-white/10 pt-5">
+                    <div className="mt-auto flex items-end justify-between gap-4 border-t border-neutral-200 pt-5">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
                           Price
                         </p>
 
-                        <p className="mt-1 text-2xl font-black text-white">
+                        <p className="mt-1 text-2xl font-black">
                           {formatCurrency(card.price)}
                         </p>
                       </div>
 
                       <Link
                         href={`/cards/${card.slug}`}
-                        className="text-sm font-black text-green-400 transition group-hover:text-green-300"
+                        className="text-sm font-black text-green-700 transition group-hover:text-green-600"
                       >
                         View →
                       </Link>

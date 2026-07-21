@@ -28,6 +28,7 @@ type Card = {
   stock: number | null;
   grade_company: string | null;
   grade: string | null;
+  featured: boolean | null;
   rookie_card: boolean | null;
   autograph: boolean | null;
 };
@@ -63,29 +64,30 @@ const pageSize = 24;
 const rangeStart = (currentPage - 1) * pageSize;
 const rangeEnd = rangeStart + pageSize - 1;
 
-  let query = supabase
-    .from("cards")
-    .select(
-        `
-          id,
-          slug,
-          player_name,
-          sport,
-          team,
-          year,
-          brand,
-          price,
-          image_url,
-          stock,
-          grade_company,
-          grade,
-          rookie_card,
-          autograph
-        `,
-        {
-          count: "exact",
-        },
-      )
+let query = supabase
+.from("cards")
+.select(
+  `
+    id,
+    slug,
+    player_name,
+    sport,
+    team,
+    year,
+    brand,
+    price,
+    image_url,
+    stock,
+    featured,
+    grade_company,
+    grade,
+    rookie_card,
+    autograph
+  `,
+  {
+    count: "exact",
+  },
+)
     .gt("stock", 0)
 .range(rangeStart, rangeEnd);
 
@@ -274,28 +276,58 @@ const rangeEnd = rangeStart + pageSize - 1;
                 <Link
                   key={card.id}
                   href={`/cards/${card.slug}`}
-                  className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:-translate-y-1 hover:border-green-500/60"
+                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.03] shadow-lg transition-all duration-300 hover:-translate-y-2 hover:border-green-500/60 hover:shadow-[0_20px_50px_rgba(34,197,94,0.18)]"
                 >
-                  <div className="relative aspect-[3/4] bg-neutral-900">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-neutral-900 to-black">
                     {card.image_url ? (
                       <Image
                         src={card.image_url}
                         alt={card.player_name}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-contain p-4 transition duration-300 group-hover:scale-105"
+                        className="object-contain p-4 transition-all duration-500 group-hover:scale-110 group-hover:rotate-[1deg]"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-neutral-500">
                         No image available
                       </div>
                     )}
+                    <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+  <span className="mb-5 rounded-full bg-white px-5 py-2 text-sm font-black text-black shadow-lg">
+    View Card
+  </span>
+</div>
                   </div>
 
-                  <div className="p-5">
+                  <div className="flex h-full flex-col p-5">
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-400">
                       {card.sport || "Sports Card"}
                     </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+  {card.featured && (
+    <span className="rounded-full bg-yellow-500 px-2 py-1 text-[10px] font-black uppercase text-black">
+      Featured
+    </span>
+  )}
+
+  {card.rookie_card && (
+    <span className="rounded-full bg-green-500 px-2 py-1 text-[10px] font-black uppercase text-black">
+      Rookie
+    </span>
+  )}
+
+  {card.autograph && (
+    <span className="rounded-full bg-purple-500 px-2 py-1 text-[10px] font-black uppercase text-white">
+      Auto
+    </span>
+  )}
+
+  {card.stock !== null && card.stock <= 3 && (
+    <span className="rounded-full border border-red-500 bg-red-500/15 px-2 py-1 text-[10px] font-black uppercase text-red-300">
+      Only {card.stock} Left
+    </span>
+  )}
+</div>
 
                     <h2 className="mt-2 text-xl font-black">
                       {card.player_name}
@@ -306,6 +338,21 @@ const rangeEnd = rangeStart + pageSize - 1;
                         .filter(Boolean)
                         .join(" • ")}
                     </p>
+                    <div className="mt-3">
+  {Number(card.stock ?? 0) > 3 ? (
+    <p className="text-sm font-bold text-green-400">
+      In Stock
+    </p>
+  ) : Number(card.stock ?? 0) > 0 ? (
+    <p className="text-sm font-bold text-amber-400">
+      Low Stock — Only {card.stock} Left
+    </p>
+  ) : (
+    <p className="text-sm font-bold text-red-400">
+      Sold Out
+    </p>
+  )}
+</div>
 
                     {(card.grade_company ||
                       card.grade ||
@@ -333,10 +380,16 @@ const rangeEnd = rangeStart + pageSize - 1;
                       </div>
                     )}
 
-                    <div className="mt-5 flex items-center justify-between">
-                      <span className="text-xl font-black">
-                        {formatCurrency(card.price)}
-                      </span>
+<div className="mt-auto flex items-end justify-between border-t border-white/10 pt-5">
+<div>
+  <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
+    Price
+  </p>
+
+  <p className="mt-1 text-2xl font-black text-white">
+    {formatCurrency(card.price)}
+  </p>
+</div>
 
                       <span className="text-sm font-bold text-green-400">
                         View Card →

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import DealerLogoutButton from "@/components/dashboard/DealerLogoutButton";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
@@ -35,9 +38,27 @@ const navigationItems = [
   },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const dealerEmail = process.env.DEALER_EMAIL?.trim().toLowerCase();
+  const signedInEmail = user?.email?.trim().toLowerCase();
+
+  if (!user) {
+    redirect("/dealer/login");
+  }
+
+  if (!dealerEmail || signedInEmail !== dealerEmail) {
+    await supabase.auth.signOut();
+    redirect("/dealer/login?error=unauthorized");
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
@@ -72,6 +93,8 @@ export default function DashboardLayout({
               >
                 Return to Website
               </Link>
+
+              <DealerLogoutButton />
             </div>
           </div>
         </aside>
