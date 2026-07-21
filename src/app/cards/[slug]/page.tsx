@@ -40,7 +40,8 @@ type CardRecord = {
   condition_notes: string | null;
 };
 
-const SITE_URL = "https://www.sidelinementality.com";
+const SITE_URL =
+  "https://www.sidelinementalitycards.com";
 
 async function getCardBySlug(
   slug: string,

@@ -18,7 +18,7 @@ const GOOGLE_ANALYTICS_ID = "G-KQ40TZCC26";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    "https://www.sidelinementality.com",
+    "https://www.sidelinementalitycards.com",
   ),
 
   title: {
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://www.sidelinementality.com",
+    url: "https://www.sidelinementalitycards.com",
     siteName: "Sideline Mentality Cards",
 
     title: "Sideline Mentality Cards",
