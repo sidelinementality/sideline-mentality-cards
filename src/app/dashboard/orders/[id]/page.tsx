@@ -83,7 +83,28 @@ function getStatusClasses(status: string | null) {
 
   return "border-white/10 bg-white/5 text-neutral-300";
 }
-
+function getTrackingUrl(
+    carrier: string | null,
+    trackingNumber: string | null,
+  ) {
+    if (!carrier || !trackingNumber) {
+      return null;
+    }
+  
+    switch (carrier.toLowerCase()) {
+      case "usps":
+        return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+  
+      case "ups":
+        return `https://www.ups.com/track?tracknum=${trackingNumber}`;
+  
+      case "fedex":
+        return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+  
+      default:
+        return null;
+    }
+  }
 export default async function OrderDetailsPage({
   params,
 }: OrderDetailsPageProps) {
@@ -270,6 +291,61 @@ created_at
                   {order.id}
                 </p>
               </div>
+              {order.shipping_carrier && (
+  <div className="border-t border-white/10 pt-4">
+    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+      Shipping Carrier
+    </p>
+
+    <p className="mt-2 font-semibold">
+      {order.shipping_carrier}
+    </p>
+  </div>
+)}
+
+{order.tracking_number && (
+  <div className="border-t border-white/10 pt-4">
+    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+      Tracking Number
+    </p>
+
+    <p className="mt-2 break-all font-semibold">
+      {order.tracking_number}
+    </p>
+  </div>
+)}
+
+{order.shipped_at && (
+  <div className="border-t border-white/10 pt-4">
+    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+      Shipped
+    </p>
+
+    <p className="mt-2 font-semibold">
+      {formatDate(order.shipped_at)}
+    </p>
+  </div>
+)}
+{getTrackingUrl(
+  order.shipping_carrier,
+  order.tracking_number,
+) && (
+  <div className="border-t border-white/10 pt-4">
+    <a
+      href={
+        getTrackingUrl(
+          order.shipping_carrier,
+          order.tracking_number,
+        )!
+      }
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center rounded-xl bg-green-500 px-4 py-3 font-bold text-black transition hover:bg-green-400"
+    >
+      Track Package →
+    </a>
+  </div>
+)}
 
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
