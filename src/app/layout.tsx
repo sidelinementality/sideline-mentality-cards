@@ -59,6 +59,11 @@ export const metadata: Metadata = {
 
   category: "Sports Trading Cards",
 
+  verification: {
+    google:
+      "D3JcsyxQHkENOKGlTwo78RkjI_RAgNENcOlxh6pOw9E",
+  },
+
   alternates: {
     canonical: "/",
   },
@@ -129,6 +134,7 @@ export default function RootLayout({
           }
 
           gtag("js", new Date());
+
           gtag("config", "${GOOGLE_ANALYTICS_ID}");
         `}
       </Script>
