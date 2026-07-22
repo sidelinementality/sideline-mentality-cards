@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import CardImageGallery from "@/components/cards/CardImageGallery";
+import RecentlyViewedTracker from "@/components/cards/RecentlyViewedTracker";
 import RelatedCards from "@/components/cards/RelatedCards";
 import WishlistButton from "@/components/wishlist/WishlistButton";
 import { supabase } from "@/lib/supabase";
@@ -304,6 +305,15 @@ export default async function CardPage({
       };
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 sm:py-16">
+<RecentlyViewedTracker
+  id={card.id}
+  slug={card.slug}
+  playerName={card.player_name}
+  year={card.year}
+  brand={card.brand}
+  price={Number.isFinite(price) ? price : 0}
+  imageUrl={card.image_url}
+/>
 
               <script
         type="application/ld+json"

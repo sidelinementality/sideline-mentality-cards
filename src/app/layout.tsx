@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import CartProvider from "@/components/cart/CartProvider";
+import StorefrontShell from "@/components/layout/StorefrontShell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,9 +18,7 @@ const geistMono = Geist_Mono({
 const GOOGLE_ANALYTICS_ID = "G-KQ40TZCC26";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    "https://www.sidelinementalitycards.com",
-  ),
+  metadataBase: new URL("https://www.sidelinementalitycards.com"),
 
   title: {
     default: "Sideline Mentality Cards",
@@ -62,6 +61,11 @@ export const metadata: Metadata = {
   verification: {
     google:
       "D3JcsyxQHkENOKGlTwo78RkjI_RAgNENcOlxh6pOw9E",
+  
+    other: {
+      "impact-site-verification":
+        "13c32c81-e5c2-4f0c-a60a-e23b8389ded9",
+    },
   },
 
   alternates: {
@@ -73,18 +77,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.sidelinementalitycards.com",
     siteName: "Sideline Mentality Cards",
-
     title: "Sideline Mentality Cards",
-
     description:
       "Premium sports trading cards with secure checkout, fast shipping, and new inventory added regularly.",
   },
 
   twitter: {
     card: "summary_large_image",
-
     title: "Sideline Mentality Cards",
-
     description:
       "Premium sports trading cards with secure checkout and fast shipping.",
   },
@@ -114,7 +114,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          <StorefrontShell>{children}</StorefrontShell>
+        </CartProvider>
       </body>
 
       <Script

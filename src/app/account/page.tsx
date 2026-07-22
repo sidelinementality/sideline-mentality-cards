@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import CustomerLogoutButton from "@/components/account/CustomerLogoutButton";
+import RecentlyViewedCards from "@/components/cards/RecentlyViewedCards";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 function formatCurrency(value: number) {
@@ -225,6 +226,8 @@ export default async function AccountPage() {
           </div>
         </section>
 
+        <RecentlyViewedCards />
+        
         <section className="mt-10 rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center">
           <h2 className="text-2xl font-black">
             Build Your Collection
