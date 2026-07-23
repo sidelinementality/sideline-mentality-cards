@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createOrder } from "@/lib/order-service";
+import { sendOrderConfirmation } from "@/lib/send-order-confirmation";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,8 @@ type PurchasedItem = {
   id: string;
   slug: string;
   playerName: string;
+  year: number | null;
+  brand: string | null;
   imageUrl: string | null;
   quantity: number;
   price: number;
@@ -107,6 +110,30 @@ export async function POST(request: Request) {
           stripeCheckoutSession: session.id,
           items,
         });
+
+        if (session.customer_details?.email) {
+          await sendOrderConfirmation({
+            customerEmail: session.customer_details.email,
+            customerName: session.customer_details.name ?? "Collector",
+            orderNumber: session.id,
+            items: items.map((item) => ({
+              playerName: item.playerName,
+              year: item.year ?? null,
+              brand: item.brand ?? null,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+            shippingAddress: {
+              line1: shipping?.line1 ?? null,
+              city: shipping?.city ?? null,
+              state: shipping?.state ?? null,
+              zipCode: shipping?.postal_code ?? null,
+            },
+            subtotal,
+            shippingCost,
+            total,
+          });
+        }
 
         console.log(
           `Order created for Checkout Session ${session.id}`,

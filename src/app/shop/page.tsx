@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import ActiveFilterChips from "@/components/shop/ActiveFilterChips";
 import ShopFilters from "@/components/shop/ShopFilters";
 import ShopSearch from "@/components/shop/ShopSearch";
 import { supabase } from "@/lib/supabase";
+import ShopCardQuickView from "@/components/shop/ShopCardQuickView";
 
 type ShopPageProps = {
     searchParams: Promise<{
@@ -373,6 +375,17 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           <ShopFilters />
         </div>
 
+        <ActiveFilterChips
+  sport={sport}
+  grade={grade}
+  rookie={rookie}
+  auto={auto}
+  price={price}
+  featured={featured}
+  graded={graded}
+  sort={sort}
+/>
+
         {error ? (
           <div className="mt-10 rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
             Unable to load cards right now.
@@ -428,133 +441,142 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </div>
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {cards.map((card) => (
-                <Link
-                  key={card.id}
-                  href={`/cards/${card.slug}`}
-                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.03] shadow-lg transition-all duration-300 hover:-translate-y-2 hover:border-green-500/60 hover:shadow-[0_20px_50px_rgba(34,197,94,0.18)]"
-                >
-                  <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-neutral-900 to-black">
-                    {card.image_url ? (
-                      <Image
-                        src={card.image_url}
-                        alt={card.player_name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-contain p-4 transition-all duration-500 group-hover:scale-110 group-hover:rotate-[1deg]"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-                        No image available
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      <span className="mb-5 rounded-full bg-white px-5 py-2 text-sm font-black text-black shadow-lg">
-                        View Card
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex h-full flex-col p-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-400">
-                      {card.sport || "Sports Card"}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {card.featured ? (
-                        <span className="rounded-full bg-yellow-500 px-2 py-1 text-[10px] font-black uppercase text-black">
-                          Featured
-                        </span>
-                      ) : null}
-
-                      {card.rookie_card ? (
-                        <span className="rounded-full bg-green-500 px-2 py-1 text-[10px] font-black uppercase text-black">
-                          Rookie
-                        </span>
-                      ) : null}
-
-                      {card.autograph ? (
-                        <span className="rounded-full bg-purple-500 px-2 py-1 text-[10px] font-black uppercase text-white">
-                          Auto
-                        </span>
-                      ) : null}
-
-                      {card.stock !== null && card.stock <= 3 ? (
-                        <span className="rounded-full border border-red-500 bg-red-500/15 px-2 py-1 text-[10px] font-black uppercase text-red-300">
-                          Only {card.stock} Left
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <h2 className="mt-3 text-xl font-black">
-                      {card.player_name}
-                    </h2>
-
-                    <p className="mt-2 text-sm text-neutral-400">
-                      {[card.year, card.brand].filter(Boolean).join(" • ")}
-                    </p>
-
-                    <div className="mt-3">
-                      {Number(card.stock ?? 0) > 3 ? (
-                        <p className="text-sm font-bold text-green-400">
-                          In Stock
-                        </p>
-                      ) : Number(card.stock ?? 0) > 0 ? (
-                        <p className="text-sm font-bold text-amber-400">
-                          Low Stock — Only {card.stock} Left
-                        </p>
-                      ) : (
-                        <p className="text-sm font-bold text-red-400">
-                          Sold Out
-                        </p>
-                      )}
-                    </div>
-
-                    {(card.grade_company ||
-                      card.grade ||
-                      card.rookie_card ||
-                      card.autograph) && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {card.grade_company ? (
-                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-neutral-300">
-                            {card.grade_company} {card.grade}
-                          </span>
-                        ) : null}
-
-                        {card.rookie_card ? (
-                          <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
-                            Rookie
-                          </span>
-                        ) : null}
-
-                        {card.autograph ? (
-                          <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
-                            Autograph
-                          </span>
-                        ) : null}
-                      </div>
-                    )}
-
-                    <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-5">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
-                          Price
-                        </p>
-
-                        <p className="mt-1 text-2xl font-black text-white">
-                          {formatCurrency(card.price)}
-                        </p>
-                      </div>
-
-                      <span className="text-sm font-bold text-green-400">
-                        View Card →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+  {cards.map((card) => (
+    <article
+      key={card.id}
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.03] shadow-lg transition-all duration-300 hover:-translate-y-2 hover:border-green-500/60 hover:shadow-[0_20px_50px_rgba(34,197,94,0.18)]"
+    >
+      <Link href={`/cards/${card.slug}`} className="block">
+        <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-neutral-900 to-black">
+          {card.image_url ? (
+            <Image
+              src={card.image_url}
+              alt={card.player_name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-contain p-4 transition-all duration-500 group-hover:scale-110 group-hover:rotate-[1deg]"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+              No image available
             </div>
+          )}
+
+          <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <span className="mb-5 rounded-full bg-white px-5 py-2 text-sm font-black text-black shadow-lg">
+              View Card
+            </span>
+          </div>
+        </div>
+      </Link>
+
+      <div className="flex flex-1 flex-col p-5">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-400">
+          {card.sport || "Sports Card"}
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {card.featured ? (
+            <span className="rounded-full bg-yellow-500 px-2 py-1 text-[10px] font-black uppercase text-black">
+              Featured
+            </span>
+          ) : null}
+
+          {card.rookie_card ? (
+            <span className="rounded-full bg-green-500 px-2 py-1 text-[10px] font-black uppercase text-black">
+              Rookie
+            </span>
+          ) : null}
+
+          {card.autograph ? (
+            <span className="rounded-full bg-purple-500 px-2 py-1 text-[10px] font-black uppercase text-white">
+              Auto
+            </span>
+          ) : null}
+
+          {card.stock !== null && card.stock <= 3 ? (
+            <span className="rounded-full border border-red-500 bg-red-500/15 px-2 py-1 text-[10px] font-black uppercase text-red-300">
+              Only {card.stock} Left
+            </span>
+          ) : null}
+        </div>
+
+        <Link
+          href={`/cards/${card.slug}`}
+          className="mt-3 transition hover:text-green-400"
+        >
+          <h2 className="text-xl font-black">{card.player_name}</h2>
+        </Link>
+
+        <p className="mt-2 text-sm text-neutral-400">
+          {[card.year, card.brand].filter(Boolean).join(" • ")}
+        </p>
+
+        <div className="mt-3">
+          {Number(card.stock ?? 0) > 3 ? (
+            <p className="text-sm font-bold text-green-400">In Stock</p>
+          ) : Number(card.stock ?? 0) > 0 ? (
+            <p className="text-sm font-bold text-amber-400">
+              Low Stock — Only {card.stock} Left
+            </p>
+          ) : (
+            <p className="text-sm font-bold text-red-400">Sold Out</p>
+          )}
+        </div>
+
+        {(card.grade_company ||
+          card.grade ||
+          card.rookie_card ||
+          card.autograph) && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {card.grade_company ? (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-neutral-300">
+                {card.grade_company} {card.grade}
+              </span>
+            ) : null}
+
+            {card.rookie_card ? (
+              <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
+                Rookie
+              </span>
+            ) : null}
+
+            {card.autograph ? (
+              <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
+                Autograph
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        <div className="mt-auto border-t border-white/10 pt-5">
+          <div className="mb-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
+              Price
+            </p>
+
+            <p className="mt-1 text-2xl font-black text-white">
+              {formatCurrency(card.price)}
+            </p>
+          </div>
+
+          <ShopCardQuickView
+            card={{
+              id: card.id,
+              slug: card.slug,
+              playerName: card.player_name,
+              year: card.year,
+              brand: card.brand,
+              price: Number(card.price ?? 0),
+              imageUrl: card.image_url,
+              availableStock: card.stock ?? 0,
+            }}
+          />
+        </div>
+      </div>
+    </article>
+  ))}
+</div>
 
             {totalPages > 1 ? (
               <nav

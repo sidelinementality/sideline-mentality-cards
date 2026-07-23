@@ -229,36 +229,6 @@ export default async function CardPage({
     notFound();
   }
 
-  const { data: relatedCards, error: relatedCardsError } =
-    await supabase
-      .from("cards")
-      .select(
-        `
-          id,
-          slug,
-          player_name,
-          sport,
-          year,
-          brand,
-          price,
-          image_url
-        `,
-      )
-      .eq("sport", card.sport)
-      .neq("id", card.id)
-      .gt("stock", 0)
-      .order("created_at", {
-        ascending: false,
-      })
-      .limit(4);
-
-  if (relatedCardsError) {
-    console.error(
-      "Related cards lookup error:",
-      relatedCardsError.message,
-    );
-  }
-
   const price = Number(card.price);
   const stock = Number(card.stock ?? 0);
   const isInStock = stock > 0;
@@ -581,7 +551,18 @@ export default async function CardPage({
           </div>
         </div>
 
-        <RelatedCards cards={relatedCards ?? []} />
+        <RelatedCards
+  currentCard={{
+    id: card.id,
+    playerName: card.player_name,
+    sport: card.sport,
+    team: card.team,
+    year: card.year,
+    brand: card.brand,
+    setName: card.set_name,
+    price: card.price,
+  }}
+/>
       </div>
     </main>
   );

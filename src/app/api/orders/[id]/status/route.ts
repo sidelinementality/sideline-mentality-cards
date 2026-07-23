@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { sendShippingConfirmation } from "@/lib/send-shipping-confirmation";
 
 type RouteContext = {
   params: Promise<{
@@ -9,6 +10,8 @@ type RouteContext = {
 
 type UpdateStatusBody = {
   fulfillmentStatus?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
 };
 
 const allowedStatuses = [
@@ -20,6 +23,28 @@ const allowedStatuses = [
 
 type FulfillmentStatus = (typeof allowedStatuses)[number];
 
+const allowedCarriers = ["USPS", "UPS", "FedEx"] as const;
+
+type ShippingCarrier = (typeof allowedCarriers)[number];
+
+function createTrackingUrl(
+  carrier: ShippingCarrier,
+  trackingNumber: string,
+) {
+  const encodedTrackingNumber = encodeURIComponent(trackingNumber);
+
+  switch (carrier) {
+    case "USPS":
+      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodedTrackingNumber}`;
+
+    case "UPS":
+      return `https://www.ups.com/track?tracknum=${encodedTrackingNumber}`;
+
+    case "FedEx":
+      return `https://www.fedex.com/fedextrack/?trknbr=${encodedTrackingNumber}`;
+  }
+}
+
 export async function PATCH(
   request: Request,
   context: RouteContext,
@@ -30,6 +55,9 @@ export async function PATCH(
 
     const fulfillmentStatus =
       body.fulfillmentStatus?.trim().toLowerCase();
+
+    const shippingCarrier = body.shippingCarrier?.trim();
+    const trackingNumber = body.trackingNumber?.trim();
 
     if (!fulfillmentStatus) {
       return NextResponse.json(
@@ -57,16 +85,81 @@ export async function PATCH(
       );
     }
 
+    if (fulfillmentStatus === "shipped") {
+      if (!shippingCarrier) {
+        return NextResponse.json(
+          {
+            error:
+              "A shipping carrier is required when marking an order as shipped.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      if (
+        !allowedCarriers.includes(
+          shippingCarrier as ShippingCarrier,
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error: "The shipping carrier must be USPS, UPS, or FedEx.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      if (!trackingNumber) {
+        return NextResponse.json(
+          {
+            error:
+              "A tracking number is required when marking an order as shipped.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+    }
+
+    const updateData: {
+      fulfillment_status: FulfillmentStatus;
+      shipping_carrier?: ShippingCarrier;
+      tracking_number?: string;
+      shipped_at?: string;
+    } = {
+      fulfillment_status:
+        fulfillmentStatus as FulfillmentStatus,
+    };
+
+    if (
+      fulfillmentStatus === "shipped" &&
+      shippingCarrier &&
+      trackingNumber
+    ) {
+      updateData.shipping_carrier =
+        shippingCarrier as ShippingCarrier;
+      updateData.tracking_number = trackingNumber;
+      updateData.shipped_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabaseAdmin
       .from("orders")
-      .update({
-        fulfillment_status: fulfillmentStatus,
-      })
+      .update(updateData)
       .eq("id", id)
       .select(
         `
           id,
-          fulfillment_status
+          customer_name,
+          customer_email,
+          fulfillment_status,
+          shipping_carrier,
+          tracking_number,
+          shipped_at
         `,
       )
       .single();
@@ -95,9 +188,45 @@ export async function PATCH(
       );
     }
 
+    let emailWarning: string | null = null;
+
+    if (
+      fulfillmentStatus === "shipped" &&
+      data.customer_email &&
+      data.shipping_carrier &&
+      data.tracking_number
+    ) {
+      try {
+        const trackingUrl = createTrackingUrl(
+          data.shipping_carrier as ShippingCarrier,
+          data.tracking_number,
+        );
+
+        await sendShippingConfirmation({
+          customerEmail: data.customer_email,
+          customerName: data.customer_name ?? "Collector",
+          orderNumber: data.id,
+          trackingNumber: data.tracking_number,
+          trackingUrl,
+        });
+      } catch (emailError) {
+        console.error(
+          "Shipping confirmation email error:",
+          emailError,
+        );
+
+        emailWarning =
+          "The order was updated, but the shipping email could not be sent.";
+      }
+    }
+
     return NextResponse.json({
-      message: "Order status updated successfully.",
+      message:
+        fulfillmentStatus === "shipped"
+          ? "Order marked as shipped successfully."
+          : "Order status updated successfully.",
       order: data,
+      emailWarning,
     });
   } catch (error) {
     console.error("Unexpected order status error:", error);
