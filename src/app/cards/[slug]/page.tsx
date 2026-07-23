@@ -473,6 +473,30 @@ export default async function CardPage({
               <WishlistButton cardId={card.id} />
             </div>
 
+            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
+  <ul className="space-y-3 text-sm font-semibold text-slate-700">
+    <li className="flex items-center gap-3">
+      <span className="text-lg">🔒</span>
+      Secure Checkout powered by Stripe
+    </li>
+
+    <li className="flex items-center gap-3">
+      <span className="text-lg">🚚</span>
+      Ships in 1–2 business days
+    </li>
+
+    <li className="flex items-center gap-3">
+      <span className="text-lg">📦</span>
+      Carefully packaged for collectors
+    </li>
+
+    <li className="flex items-center gap-3">
+      <span className="text-lg">💚</span>
+      Collector-Owned • Faith-Driven Business
+    </li>
+  </ul>
+</div>
+
             <div className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
               <h2 className="text-lg font-black text-slate-950">
                 Card Details
