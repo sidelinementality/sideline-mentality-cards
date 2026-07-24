@@ -36,6 +36,7 @@ type Card = {
   featured: boolean | null;
   rookie_card: boolean | null;
   autograph: boolean | null;
+  created_at: string | null;
 };
 
 function formatCurrency(value: number | string | null) {
@@ -89,7 +90,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         grade_company,
         grade,
         rookie_card,
-        autograph
+autograph,
+created_at
       `,
       {
         count: "exact",
@@ -142,6 +144,20 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   } else if (sort === "price-high") {
     query = query.order("price", {
       ascending: false,
+    });
+  } else if (sort === "player-az") {
+    query = query.order("player_name", {
+      ascending: true,
+    });
+  } else if (sort === "year-new") {
+    query = query.order("year", {
+      ascending: false,
+      nullsFirst: false,
+    });
+  } else if (sort === "year-old") {
+    query = query.order("year", {
+      ascending: true,
+      nullsFirst: false,
     });
   } else {
     query = query.order("created_at", {
@@ -370,6 +386,220 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </div>
       </section>
 
+      <section className="border-b border-white/10 bg-neutral-950 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+  <div className="mx-auto max-w-7xl">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="h-px w-10 bg-green-500" />
+
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-green-400">
+            Shop by Collection
+          </p>
+        </div>
+
+        <h2 className="mt-4 text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+          Featured Collections
+        </h2>
+
+        <p className="mt-3 max-w-2xl leading-7 text-neutral-400">
+          Jump directly into some of the most popular areas of the
+          Sideline Mentality Cards marketplace.
+        </p>
+      </div>
+
+      <Link
+        href="/shop"
+        className="text-sm font-black uppercase tracking-wide text-green-400 transition hover:text-green-300"
+      >
+        Browse All Cards →
+      </Link>
+    </div>
+
+    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Link
+        href="/shop?sport=Football&rookie=true"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500/60 hover:shadow-[0_18px_45px_rgba(34,197,94,0.14)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-green-500/10 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            🏈
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-green-400">
+            Football
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Football Rookies
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Shop rookie cards from rising stars and future franchise
+            players.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-green-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/shop?sport=Basketball"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500/60 hover:shadow-[0_18px_45px_rgba(34,197,94,0.14)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-green-500/10 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            🏀
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-green-400">
+            Basketball
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Basketball Stars
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Browse basketball cards featuring rookies, stars, and
+            collectible favorites.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-green-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/shop?auto=true"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500/60 hover:shadow-[0_18px_45px_rgba(34,197,94,0.14)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-purple-500/10 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            ✍️
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-purple-400">
+            Signed Cards
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Autograph Collection
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Find signed cards that add personality and scarcity to any
+            collection.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-purple-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/shop?graded=true"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500/60 hover:shadow-[0_18px_45px_rgba(34,197,94,0.14)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-blue-500/10 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            🏆
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-blue-400">
+            Certified
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Graded Collection
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Shop professionally graded cards from trusted grading
+            companies.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-blue-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/shop?price=under-50"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500/60 hover:shadow-[0_18px_45px_rgba(34,197,94,0.14)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-amber-500/10 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            💰
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-amber-400">
+            Affordable Finds
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Cards Under $50
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Build your collection with quality cards at approachable
+            prices.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-amber-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/shop?featured=true"
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-green-500/15 to-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-green-500 hover:shadow-[0_18px_45px_rgba(34,197,94,0.18)]"
+      >
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-green-500/20 blur-2xl" />
+
+        <div className="relative">
+          <span className="text-3xl" aria-hidden="true">
+            🔥
+          </span>
+
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-green-400">
+            Dealer Picks
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black uppercase text-white">
+            Featured Finds
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-neutral-400">
+            Explore hand-selected cards featured by Sideline Mentality
+            Cards.
+          </p>
+
+          <span className="mt-6 inline-flex text-sm font-black text-white transition group-hover:text-green-400">
+            Explore Collection →
+          </span>
+        </div>
+      </Link>
+    </div>
+  </div>
+</section>
+
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <div className="rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-5">
           <ShopFilters />
@@ -441,7 +671,20 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </div>
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-  {cards.map((card) => (
+            {cards.map((card) => {
+  const createdAt = card.created_at
+    ? new Date(card.created_at)
+    : null;
+
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  const isNewArrival =
+    createdAt !== null &&
+    !Number.isNaN(createdAt.getTime()) &&
+    createdAt >= fourteenDaysAgo;
+
+  return (
     <article
       key={card.id}
       className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.03] shadow-lg transition-all duration-300 hover:-translate-y-2 hover:border-green-500/60 hover:shadow-[0_20px_50px_rgba(34,197,94,0.18)]"
@@ -476,6 +719,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
+        {isNewArrival ? (
+  <span className="rounded-full bg-sky-500 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+    NEW
+  </span>
+) : null}
           {card.featured ? (
             <span className="rounded-full bg-yellow-500 px-2 py-1 text-[10px] font-black uppercase text-black">
               Featured
@@ -575,7 +823,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </div>
       </div>
     </article>
-  ))}
+    );
+})}
 </div>
 
             {totalPages > 1 ? (

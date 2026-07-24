@@ -51,12 +51,12 @@ export default async function DashboardLayout({
   const signedInEmail = user?.email?.trim().toLowerCase();
 
   if (!user) {
-    redirect("/dealer/login");
+    redirect("/login");
   }
 
   if (!dealerEmail || signedInEmail !== dealerEmail) {
     await supabase.auth.signOut();
-    redirect("/dealer/login?error=unauthorized");
+    redirect("/login?error=unauthorized");
   }
 
   return (

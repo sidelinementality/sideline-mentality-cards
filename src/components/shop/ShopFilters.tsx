@@ -287,9 +287,12 @@ export default function ShopFilters() {
               updateParam("sort", event.target.value)
             }
           >
-            <option value="">Newest</option>
-            <option value="price-low">Price: Low → High</option>
-            <option value="price-high">Price: High → Low</option>
+            <option value="">Newest Arrivals</option>
+<option value="price-low">Price: Low → High</option>
+<option value="price-high">Price: High → Low</option>
+<option value="player-az">Player: A → Z</option>
+<option value="year-new">Year: Newest → Oldest</option>
+<option value="year-old">Year: Oldest → Newest</option>
           </select>
         </div>
       </div>

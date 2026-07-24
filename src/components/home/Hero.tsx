@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ShopSearch from "@/components/shop/ShopSearch";
 
 const trustItems = [
   {
@@ -96,6 +97,7 @@ export default function Hero() {
         aria-hidden="true"
       >
         <div className="absolute -left-32 top-20 h-80 w-80 rounded-full bg-green-500/10 blur-3xl" />
+
         <div className="absolute -right-24 top-0 h-[32rem] w-[32rem] rounded-full bg-green-500/15 blur-3xl" />
 
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
@@ -104,21 +106,25 @@ export default function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-5 pb-10 pt-14 sm:px-6 sm:pt-20 lg:px-8 lg:pb-14 lg:pt-24">
-        <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-          <div className="relative z-10">
+      <div className="grid items-center gap-12 llg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
+          <div className="relative z-20">
             <div className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-green-400">
               <span className="h-2 w-2 rounded-full bg-green-400 shadow-[0_0_12px_rgba(74,222,128,0.9)]" />
+
               Premium Sports Card Marketplace
             </div>
 
-            <h1 className="mt-7 max-w-3xl text-4xl font-black uppercase leading-[0.98] tracking-[-0.04em] sm:text-5xl md:text-6xl lg:text-7xl">
+            <h1 className="mt-7 max-w-4xl text-4xl font-black uppercase leading-[0.98] tracking-[-0.04em] sm:text-5xl md:text-6xl lg:text-7xl">
               The Next
+
               <span className="mt-2 block -skew-x-3 text-green-400 drop-shadow-[0_0_24px_rgba(34,197,94,0.22)]">
                 Centerpiece
               </span>
+
               <span className="mt-2 block">
                 Of Your Collection
               </span>
+
               <span className="mt-2 block text-neutral-300">
                 Starts Here.
               </span>
@@ -131,12 +137,27 @@ export default function Hero() {
               as much as you do.
             </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="relative z-40 mt-8 max-w-2xl rounded-3xl border border-white/10 bg-white/[0.045] p-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-4">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-green-400">
+                  Search the Marketplace
+                </p>
+
+                <p className="hidden text-xs font-semibold text-neutral-500 sm:block">
+                  Players, teams, brands and grades
+                </p>
+              </div>
+
+              <ShopSearch />
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href="/shop?sort=newest"
                 className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-4 text-sm font-black uppercase tracking-wide text-black shadow-lg shadow-green-500/20 transition duration-200 hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-green-500/30"
               >
                 Shop New Arrivals
+
                 <span
                   className="transition group-hover:translate-x-1"
                   aria-hidden="true"
@@ -163,6 +184,7 @@ export default function Hero() {
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-neutral-400">
               <div className="flex items-center gap-2">
                 <span className="text-green-400">★★★★★</span>
+
                 <span className="font-semibold text-neutral-300">
                   Collector-focused service
                 </span>
@@ -174,29 +196,44 @@ export default function Hero() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none">
+          <div className="relative mx-auto w-full max-w-2xl lg:-mt-6 lg:mx-0 lg:max-w-none">
             <div
-              className="absolute -inset-4 rounded-[2rem] bg-green-500/10 blur-2xl"
+              className="absolute -inset-8 rounded-[3rem] bg-green-500/10 blur-3xl"
               aria-hidden="true"
             />
 
-            <div className="group relative overflow-hidden rounded-[1.75rem] border border-green-500/30 bg-neutral-950 shadow-2xl shadow-green-500/10">
-              <div
-                className="pointer-events-none absolute inset-0 z-10 rounded-[1.75rem] ring-1 ring-inset ring-white/10"
-                aria-hidden="true"
-              />
+            <div
+              className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-green-400/15 blur-3xl"
+              aria-hidden="true"
+            />
+
+            <div
+              className="absolute -bottom-10 left-12 h-36 w-72 rounded-full bg-green-500/10 blur-3xl"
+              aria-hidden="true"
+            />
+
+<div className="group relative overflow-hidden rounded-[1.75rem] border border-green-500/30 bg-neutral-950 shadow-[0_30px_90px_rgba(0,0,0,0.65)]">
+<div
+  className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-white/10"
+  aria-hidden="true"
+/>
 
               <Image
                 src="/sideline-mentality-cards-hero.png"
-                alt="Sideline Mentality Cards premium sports card marketplace"
+                alt="A premium selection of sports trading cards available from Sideline Mentality Cards"
                 width={1536}
                 height={1024}
                 priority
                 sizes="(max-width: 1024px) 100vw, 55vw"
-                className="h-auto w-full transition duration-700 group-hover:scale-[1.02]"
+                className="aspect-[3/2] w-full object-contain object-center transition duration-700 ease-out"
               />
 
-              <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/70 to-transparent px-5 pb-5 pt-20 sm:px-7 sm:pb-7">
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/35 via-transparent to-green-500/10"
+                aria-hidden="true"
+              />
+
+              <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/75 to-transparent px-5 pb-5 pt-24 sm:px-7 sm:pb-7">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.25em] text-green-400">
@@ -213,21 +250,17 @@ export default function Hero() {
                     href="/shop"
                     className="inline-flex shrink-0 items-center gap-2 text-sm font-black uppercase tracking-wide text-green-400 transition hover:text-green-300"
                   >
-                    Explore the shop
-                    <span aria-hidden="true">→</span>
+                    Explore the Shop
+
+                    <span
+                      className="transition group-hover:translate-x-1"
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
                   </Link>
                 </div>
               </div>
-            </div>
-
-            <div className="absolute -bottom-5 -left-4 hidden rounded-2xl border border-white/10 bg-neutral-950/95 px-5 py-4 shadow-xl backdrop-blur sm:block">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-green-400">
-                Fresh Inventory
-              </p>
-
-              <p className="mt-1 text-sm font-bold text-white">
-                New cards added regularly
-              </p>
             </div>
           </div>
         </div>
@@ -240,14 +273,8 @@ export default function Hero() {
                 index > 0
                   ? "border-t border-white/10 sm:border-t-0 sm:[&:nth-child(odd)]:border-l lg:border-l"
                   : ""
-              } ${
-                index === 1
-                  ? "sm:border-l"
-                  : ""
-              } ${
-                index >= 2
-                  ? "sm:border-t lg:border-t-0"
-                  : ""
+              } ${index === 1 ? "sm:border-l" : ""} ${
+                index >= 2 ? "sm:border-t lg:border-t-0" : ""
               }`}
             >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-green-500/25 bg-green-500/10 text-green-400">
