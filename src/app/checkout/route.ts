@@ -12,6 +12,9 @@ if (!stripeSecretKey) {
 
 const stripe = new Stripe(stripeSecretKey);
 
+const FLAT_SHIPPING_AMOUNT_CENTS = 499;
+const FREE_SHIPPING_THRESHOLD_CENTS = 10000;
+
 type CheckoutItem = {
   id: string;
   quantity: number;
@@ -112,6 +115,8 @@ export async function POST(request: Request) {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
       [];
 
+    let merchandiseSubtotalCents = 0;
+
     for (const requestedItem of validRequestedItems) {
       const card = cards.find(
         (currentCard) =>
@@ -158,6 +163,11 @@ export async function POST(request: Request) {
         );
       }
 
+      const unitAmountCents = Math.round(price * 100);
+
+      merchandiseSubtotalCents +=
+        unitAmountCents * requestedItem.quantity;
+
       const productName = [
         card.player_name,
         card.year,
@@ -170,7 +180,7 @@ export async function POST(request: Request) {
         quantity: requestedItem.quantity,
         price_data: {
           currency: "usd",
-          unit_amount: Math.round(price * 100),
+          unit_amount: unitAmountCents,
           product_data: {
             name: productName,
             images: card.image_url
@@ -184,6 +194,18 @@ export async function POST(request: Request) {
         },
       });
     }
+
+    const qualifiesForFreeShipping =
+      merchandiseSubtotalCents >=
+      FREE_SHIPPING_THRESHOLD_CENTS;
+
+    const shippingAmountCents = qualifiesForFreeShipping
+      ? 0
+      : FLAT_SHIPPING_AMOUNT_CENTS;
+
+    const shippingDisplayName = qualifiesForFreeShipping
+      ? "Free Standard Shipping"
+      : "Flat-Rate Standard Shipping";
 
     const origin =
       request.headers.get("origin") ??
@@ -206,15 +228,18 @@ export async function POST(request: Request) {
       phone_number_collection: {
         enabled: true,
       },
+
+      // This is one order-level shipping charge.
+      // The number of cards does not add additional shipping fees.
       shipping_options: [
         {
           shipping_rate_data: {
             type: "fixed_amount",
             fixed_amount: {
-              amount: 399,
+              amount: shippingAmountCents,
               currency: "usd",
             },
-            display_name: "Standard Shipping",
+            display_name: shippingDisplayName,
             delivery_estimate: {
               minimum: {
                 unit: "business_day",
@@ -228,13 +253,22 @@ export async function POST(request: Request) {
           },
         },
       ],
+
       metadata: {
+        merchandise_subtotal_cents:
+          String(merchandiseSubtotalCents),
+        shipping_amount_cents:
+          String(shippingAmountCents),
+        free_shipping:
+          String(qualifiesForFreeShipping),
+
         cart: JSON.stringify(
           validRequestedItems.map((requestedItem) => {
             const card = cards.find(
-              (currentCard) => currentCard.id === requestedItem.id,
+              (currentCard) =>
+                currentCard.id === requestedItem.id,
             );
-      
+
             return {
               id: card!.id,
               slug: card!.slug,
