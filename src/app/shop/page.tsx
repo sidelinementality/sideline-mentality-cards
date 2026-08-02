@@ -5,6 +5,7 @@ import ShopFilters from "@/components/shop/ShopFilters";
 import ShopSearch from "@/components/shop/ShopSearch";
 import { supabase } from "@/lib/supabase";
 import ShopCardQuickView from "@/components/shop/ShopCardQuickView";
+import MarketplaceTrustBar from "@/components/shop/MarketplaceTrustBar";
 
 type ShopPageProps = {
     searchParams: Promise<{
@@ -387,6 +388,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           </div>
         </div>
       </section>
+
+      <MarketplaceTrustBar />
 
       <section className="border-b border-white/10 bg-neutral-950 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
   <div className="mx-auto max-w-7xl">
