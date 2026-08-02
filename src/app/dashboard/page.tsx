@@ -16,6 +16,11 @@ import DealerProfitDashboard from "@/components/dashboard/DealerProfitDashboard"
 import TopProfitCards from "@/components/dashboard/TopProfitCards";
 import InventoryIntelligence from "@/components/dashboard/InventoryIntelligence";
 import DealerDashboardCharts from "@/components/dashboard/DealerDashboardCharts";
+import BuyBibleCommandCenter from "@/components/dashboard/BuyBibleCommandCenter";
+import {
+  createInventoryQuantityMap,
+  getOwnedQuantity,
+} from "@/lib/buy-bible-inventory";
 
 type Card = {
   id: string;
@@ -116,6 +121,35 @@ purchase_fees
 
   const inventory = (cards ?? []) as Card[];
   const salesOrders = orders ?? [];
+
+  const { data: buyBibleTargets, error: buyBibleError } =
+  await supabaseAdmin
+    .from("buy_bible_targets")
+    .select(`
+      id,
+      player_name,
+      sport,
+      priority_level,
+      overall_buy_score,
+      target_quantity,
+      target_status
+    `)
+    .eq("is_active", true)
+    .order("priority_level", { ascending: false })
+    .order("overall_buy_score", {
+      ascending: false,
+      nullsFirst: false,
+    });
+
+if (buyBibleError) {
+  console.error(
+    "Dashboard Buy Bible loading error:",
+    buyBibleError,
+  );
+}
+
+const inventoryQuantityMap =
+  createInventoryQuantityMap(inventory);
 
   const totalRevenue = salesOrders
     .filter(
@@ -597,6 +631,27 @@ purchase_fees
       },
     ];
 
+    const dashboardBuyTargets = (buyBibleTargets ?? []).map(
+      (target) => ({
+        id: target.id,
+        playerName: target.player_name,
+        sport: target.sport,
+        priority: Number(target.priority_level ?? 0),
+        buyScore:
+          target.overall_buy_score === null
+            ? null
+            : Number(target.overall_buy_score),
+        currentQuantity: getOwnedQuantity(
+          target.player_name,
+          inventoryQuantityMap,
+        ),
+        targetQuantity: Number(
+          target.target_quantity ?? 0,
+        ),
+        status: target.target_status,
+      }),
+    );
+
   const dashboardStats = [
     {
       label: "Inventory Value",
@@ -654,6 +709,10 @@ purchase_fees
         missingBackImages={cardsMissingBackImages}
         pendingOrders={pendingFulfillmentOrders}
       />
+
+<BuyBibleCommandCenter
+  targets={dashboardBuyTargets}
+/>
 
 <DealerProfitDashboard
   inventoryCost={inventoryCost}
