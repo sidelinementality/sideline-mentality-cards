@@ -91,8 +91,8 @@ export default function Hero() {
     <section className="relative isolate overflow-hidden border-b border-white/10 bg-black text-white">
       <HeroBackground />
 
-      <div className="relative mx-auto max-w-[1500px] px-5 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8 lg:pb-20 lg:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:gap-14 xl:gap-20">
+      <div className="relative mx-auto max-w-[1500px] px-5 pb-10 pt-10 sm:px-6 sm:pb-14 sm:pt-14 lg:px-8 lg:pb-16 lg:pt-16">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-12 xl:gap-16">
           <div className="relative z-20">
             <div className="inline-flex items-center gap-3 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 backdrop-blur">
               <span className="relative flex h-2.5 w-2.5">
@@ -106,22 +106,22 @@ export default function Hero() {
               </span>
             </div>
 
-            <h1 className="mt-7 max-w-3xl text-[2.75rem] font-black uppercase leading-[0.9] tracking-[-0.055em] sm:text-6xl lg:text-[4.8rem] xl:text-[5.7rem]">
-              Find the next
+            <h1 className="mt-7 max-w-3xl text-[2.9rem] font-black uppercase leading-[0.88] tracking-[-0.055em] sm:text-6xl lg:text-[4.8rem] xl:text-[5.5rem]">
+              The next
 
               <span className="mt-2 block text-green-400">
                 centerpiece
               </span>
 
               <span className="mt-2 block text-white">
-                of your collection.
+                starts here.
               </span>
             </h1>
 
             <p className="mt-7 max-w-xl text-base leading-7 text-neutral-300 sm:text-lg sm:leading-8">
-              Shop hand-selected rookies, autographs, graded cards, stars,
-              and legends from a collector-owned marketplace built around
-              honest listings and dependable service.
+              Discover premium sports cards from every major league. Every
+              listing is carefully photographed, accurately described, and
+              backed by a collector who values the hobby as much as you do.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -154,7 +154,7 @@ export default function Hero() {
               </Link>
             </div>
 
-            <div className="mt-9 grid max-w-xl gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
               {collectorBenefits.map((item) => (
                 <div
                   key={item.title}
@@ -178,7 +178,7 @@ export default function Hero() {
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto w-full max-w-3xl lg:mx-0 lg:max-w-none">
+          <div className="relative z-10 mx-auto w-full max-w-5xl lg:mx-0 lg:max-w-none">
             <div
               className="absolute -inset-10 rounded-[4rem] bg-green-500/10 blur-3xl"
               aria-hidden="true"
@@ -201,7 +201,7 @@ export default function Hero() {
                 width={1536}
                 height={1024}
                 priority
-                sizes="(max-width: 1024px) 100vw, 58vw"
+                sizes="(max-width: 1024px) 100vw, 62vw"
                 className="aspect-[3/2] w-full object-contain object-center transition duration-700 ease-out hover:scale-[1.015]"
               />
 
@@ -221,7 +221,7 @@ export default function Hero() {
                 </div>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black via-black/90 to-transparent px-5 pb-5 pt-28 sm:px-8 sm:pb-8">
+              <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black via-black/90 to-transparent px-5 pb-5 pt-24 sm:px-8 sm:pb-8">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.24em] text-green-400">
@@ -276,13 +276,11 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-6 sm:mt-16">
+        <div className="mt-10 border-t border-white/10 pt-6 sm:mt-12">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-600">
-                Explore Popular Collections
-              </p>
-            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-600">
+              Explore Popular Collections
+            </p>
 
             <div className="flex flex-wrap gap-2">
               {collectionLinks.map((collection) => (
