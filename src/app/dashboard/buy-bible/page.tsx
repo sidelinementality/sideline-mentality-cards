@@ -226,7 +226,7 @@ const inventoryQuantityMap = createInventoryQuantityMap(
         currentQuantity={getOwnedQuantity(
             target.player_name,
             inventoryQuantityMap,
-          )}currentQuantity={Number(target.current_quantity)}
+          )}
         targetQuantity={Number(target.target_quantity)}
         status={target.target_status}
       />
