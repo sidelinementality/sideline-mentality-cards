@@ -9,18 +9,54 @@ type UpdateCardRequest = {
   year?: number | string;
   brand?: string;
   setName?: string;
+  parallel?: string;
   cardNumber?: string;
-  gradeCompany?: string;
-  grade?: string;
-  price?: number;
-  imageUrl?: string | null;
-  backImageUrl?: string | null;
-  featured?: boolean;
+
   rookieCard?: boolean;
   autograph?: boolean;
+  patch?: boolean;
+  relic?: boolean;
+  shortPrint?: boolean;
+  caseHit?: boolean;
   serialNumber?: string;
-  stock?: number;
+  condition?: string;
   conditionNotes?: string;
+
+  graded?: boolean;
+  gradeCompany?: string;
+  grade?: string;
+  certificationNumber?: string;
+
+  purchaseDate?: string;
+  purchaseSource?: string;
+  seller?: string;
+  purchaseSession?: string;
+  purchasePrice?: number;
+  shippingCost?: number;
+  salesTax?: number;
+  purchaseFees?: number;
+
+  marketValue?: number;
+  websitePrice?: number;
+  minimumPrice?: number;
+
+  storageArea?: string;
+  cabinet?: string;
+  shelf?: string;
+  box?: string;
+  row?: string;
+  slot?: string;
+  storageNotes?: string;
+
+  imageUrl?: string | null;
+  backImageUrl?: string | null;
+
+  websiteReady?: boolean;
+  featured?: boolean;
+  listingStatus?: string;
+  internalNotes?: string;
+
+  stock?: number;
   stockOnly?: boolean;
 };
 
@@ -36,6 +72,43 @@ function cleanOptionalText(
   const cleanedValue = value?.trim();
 
   return cleanedValue ? cleanedValue : null;
+}
+
+function cleanOptionalNumber(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function cleanRequiredMoney(value: number | undefined) {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
+function createSlug(
+  parts: Array<string | number | null | undefined>,
+) {
+  return parts
+    .filter(
+      (part) =>
+        part !== null &&
+        part !== undefined &&
+        part !== "",
+    )
+    .join("-")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export async function PATCH(
@@ -92,32 +165,54 @@ export async function PATCH(
       });
     }
 
-    const slug = body.slug?.trim().toLowerCase();
     const playerName = body.playerName?.trim();
     const sport = body.sport?.trim();
     const brand = body.brand?.trim();
+    const team = cleanOptionalText(body.team);
+    const setName = cleanOptionalText(body.setName);
+    const parallel = cleanOptionalText(body.parallel);
+    const cardNumber = cleanOptionalText(body.cardNumber);
+
+    const year = Number(body.year);
+    const stock = Number(body.stock);
+
+    const suppliedSlug = body.slug?.trim().toLowerCase();
+
+    const generatedSlug = createSlug([
+      playerName,
+      year,
+      brand,
+      setName,
+      parallel,
+      cardNumber,
+    ]);
+
+    const slug = suppliedSlug || generatedSlug;
+
     const imageUrl = cleanOptionalText(body.imageUrl);
     const backImageUrl = cleanOptionalText(
       body.backImageUrl,
     );
-    const year = Number(body.year);
 
-    if (!slug) {
-      return NextResponse.json(
-        { error: "A URL slug is required." },
-        { status: 400 },
-      );
-    }
+    const purchasePrice = cleanRequiredMoney(
+      body.purchasePrice,
+    );
 
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      return NextResponse.json(
-        {
-          error:
-            "The URL slug may only contain lowercase letters, numbers, and hyphens.",
-        },
-        { status: 400 },
-      );
-    }
+    const shippingCost = cleanRequiredMoney(
+      body.shippingCost ?? 0,
+    );
+
+    const salesTax = cleanRequiredMoney(
+      body.salesTax ?? 0,
+    );
+
+    const purchaseFees = cleanRequiredMoney(
+      body.purchaseFees ?? 0,
+    );
+
+    const websitePrice = cleanRequiredMoney(
+      body.websitePrice,
+    );
 
     if (!playerName) {
       return NextResponse.json(
@@ -153,21 +248,48 @@ export async function PATCH(
       );
     }
 
-    if (
-      typeof body.price !== "number" ||
-      !Number.isFinite(body.price) ||
-      body.price < 0
-    ) {
+    if (!slug) {
       return NextResponse.json(
-        { error: "Please enter a valid price." },
+        { error: "A URL slug could not be generated." },
+        { status: 400 },
+      );
+    }
+
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      return NextResponse.json(
+        {
+          error:
+            "The URL slug may only contain lowercase letters, numbers, and hyphens.",
+        },
         { status: 400 },
       );
     }
 
     if (
-      typeof body.stock !== "number" ||
-      !Number.isInteger(body.stock) ||
-      body.stock < 0
+      purchasePrice === null ||
+      shippingCost === null ||
+      salesTax === null ||
+      purchaseFees === null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Purchase prices, shipping, tax, and fees must be valid non-negative amounts.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (websitePrice === null) {
+      return NextResponse.json(
+        { error: "Please enter a valid website price." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !Number.isInteger(stock) ||
+      stock < 0
     ) {
       return NextResponse.json(
         { error: "Please enter a valid stock quantity." },
@@ -182,34 +304,98 @@ export async function PATCH(
       );
     }
 
+    const graded = Boolean(body.graded);
+
     const { data, error } = await supabaseAdmin
       .from("cards")
       .update({
         slug,
         player_name: playerName,
         sport,
-        team: cleanOptionalText(body.team),
+        team,
         year,
         brand,
-        set_name: cleanOptionalText(body.setName),
-        card_number: cleanOptionalText(body.cardNumber),
-        grade_company: cleanOptionalText(
-          body.gradeCompany,
-        ),
-        grade: cleanOptionalText(body.grade),
-        price: body.price,
-        image_url: imageUrl,
-        back_image_url: backImageUrl,
-        featured: Boolean(body.featured),
+        set_name: setName,
+        parallel,
+        card_number: cardNumber,
+
         rookie_card: Boolean(body.rookieCard),
         autograph: Boolean(body.autograph),
+        patch: Boolean(body.patch),
+        relic: Boolean(body.relic),
+        short_print: Boolean(body.shortPrint),
+        case_hit: Boolean(body.caseHit),
         serial_number: cleanOptionalText(
           body.serialNumber,
         ),
-        stock: body.stock,
+        card_condition: cleanOptionalText(
+          body.condition,
+        ),
         condition_notes: cleanOptionalText(
           body.conditionNotes,
         ),
+
+        graded,
+        grade_company: graded
+          ? cleanOptionalText(body.gradeCompany)
+          : null,
+        grade: graded
+          ? cleanOptionalText(body.grade)
+          : null,
+        certification_number: graded
+          ? cleanOptionalText(
+              body.certificationNumber,
+            )
+          : null,
+
+        purchase_date: cleanOptionalText(
+          body.purchaseDate,
+        ),
+        purchase_source: cleanOptionalText(
+          body.purchaseSource,
+        ),
+        seller: cleanOptionalText(body.seller),
+        purchase_session: cleanOptionalText(
+          body.purchaseSession,
+        ),
+        purchase_price: purchasePrice,
+        shipping_cost: shippingCost,
+        sales_tax: salesTax,
+        purchase_fees: purchaseFees,
+
+        market_value: cleanOptionalNumber(
+          body.marketValue,
+        ),
+        price: websitePrice,
+        minimum_price: cleanOptionalNumber(
+          body.minimumPrice,
+        ),
+
+        storage_area: cleanOptionalText(
+          body.storageArea,
+        ),
+        cabinet: cleanOptionalText(body.cabinet),
+        shelf: cleanOptionalText(body.shelf),
+        box: cleanOptionalText(body.box),
+        storage_row: cleanOptionalText(body.row),
+        slot: cleanOptionalText(body.slot),
+        storage_notes: cleanOptionalText(
+          body.storageNotes,
+        ),
+
+        image_url: imageUrl,
+        back_image_url: backImageUrl,
+
+        website_ready: Boolean(body.websiteReady),
+        featured: Boolean(body.featured),
+        listing_status:
+          cleanOptionalText(body.listingStatus) ??
+          "Available",
+        internal_notes: cleanOptionalText(
+          body.internalNotes,
+        ),
+
+        stock,
       })
       .eq("id", id)
       .select("*")
@@ -229,7 +415,11 @@ export async function PATCH(
       }
 
       return NextResponse.json(
-        { error: "The card could not be updated." },
+        {
+          error:
+            error.message ||
+            "The card could not be updated.",
+        },
         { status: 500 },
       );
     }
@@ -304,7 +494,8 @@ export async function DELETE(
       existingCard.back_image_url,
     ].filter(
       (image): image is string =>
-        typeof image === "string" && image.length > 0,
+        typeof image === "string" &&
+        image.length > 0,
     );
 
     for (const imageUrl of imagesToDelete) {

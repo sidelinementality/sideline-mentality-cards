@@ -53,8 +53,11 @@ export default async function FeaturedInventory() {
       `,
     )
     .eq("featured", true)
-    .order("created_at", { ascending: false })
-    .limit(4);
+.eq("website_ready", true)
+.eq("listing_status", "Published")
+.gt("stock", 0)
+.order("created_at", { ascending: false })
+.limit(4);
 
   if (error) {
     console.error("Featured inventory error:", error);

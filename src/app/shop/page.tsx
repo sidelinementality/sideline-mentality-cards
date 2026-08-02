@@ -73,32 +73,34 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const rangeEnd = rangeStart + pageSize - 1;
 
   let query = supabase
-    .from("cards")
-    .select(
-      `
-        id,
-        slug,
-        player_name,
-        sport,
-        team,
-        year,
-        brand,
-        price,
-        image_url,
-        stock,
-        featured,
-        grade_company,
-        grade,
-        rookie_card,
-autograph,
-created_at
-      `,
-      {
-        count: "exact",
-      },
-    )
-    .gt("stock", 0)
-    .range(rangeStart, rangeEnd);
+  .from("cards")
+  .select(
+    `
+      id,
+      slug,
+      player_name,
+      sport,
+      team,
+      year,
+      brand,
+      price,
+      image_url,
+      stock,
+      featured,
+      grade_company,
+      grade,
+      rookie_card,
+      autograph,
+      created_at
+    `,
+    {
+      count: "exact",
+    },
+  )
+  .eq("website_ready", true)
+  .eq("listing_status", "Published")
+  .gt("stock", 0)
+  .range(rangeStart, rangeEnd);
 
   if (sport) {
     query = query.ilike("sport", sport);
