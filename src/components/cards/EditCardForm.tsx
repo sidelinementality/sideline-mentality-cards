@@ -459,7 +459,7 @@ export default function EditCardForm({ card }: EditCardFormProps) {
       <FormSection
         step="3"
         title="Purchase Details"
-        description="Maintain the true cost basis for this card."
+        description="Maintain the true cost basis and acquisition source for this card. Dealer Intake can fill these when a card is published from a scan batch."
       >
         <div className="grid gap-6 md:grid-cols-2">
           <TextField

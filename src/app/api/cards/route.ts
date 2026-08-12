@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveCardSlug } from "@/lib/card-slug";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type CreateCardRequest = {
@@ -31,14 +32,14 @@ type CreateCardRequest = {
   purchaseSource?: string;
   seller?: string;
   purchaseSession?: string;
-  purchasePrice?: number;
+  purchasePrice?: number | null;
   shippingCost?: number;
   salesTax?: number;
   purchaseFees?: number;
   quantity?: number;
 
   marketValue?: number;
-  websitePrice?: number;
+  websitePrice?: number | null;
   minimumPrice?: number;
 
   storageArea?: string;
@@ -64,7 +65,7 @@ function cleanOptionalText(value: string | undefined) {
   return cleanedValue ? cleanedValue : null;
 }
 
-function cleanOptionalNumber(value: number | undefined) {
+function cleanOptionalNumber(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return null;
   }
@@ -72,7 +73,7 @@ function cleanOptionalNumber(value: number | undefined) {
   return value;
 }
 
-function cleanRequiredMoney(value: number | undefined) {
+function cleanRequiredMoney(value: number | null | undefined) {
   if (
     typeof value !== "number" ||
     !Number.isFinite(value) ||
@@ -82,16 +83,6 @@ function cleanRequiredMoney(value: number | undefined) {
   }
 
   return value;
-}
-
-function createSlug(parts: Array<string | number | null | undefined>) {
-  return parts
-    .filter((part) => part !== null && part !== undefined && part !== "")
-    .join("-")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 export async function POST(request: Request) {
@@ -117,18 +108,15 @@ export async function POST(request: Request) {
     const purchaseFees = cleanRequiredMoney(body.purchaseFees ?? 0);
     const websitePrice = cleanRequiredMoney(body.websitePrice);
 
-    const suppliedSlug = body.slug?.trim().toLowerCase();
-
-    const generatedSlug = createSlug([
+    const slug = resolveCardSlug({
       playerName,
       year,
       brand,
       setName,
       parallel,
       cardNumber,
-    ]);
-
-    const slug = suppliedSlug || generatedSlug;
+      slug: body.slug,
+    });
 
     if (!playerName) {
       return NextResponse.json(
@@ -182,9 +170,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (websitePrice === null) {
+    if (websitePrice === null || websitePrice <= 0) {
       return NextResponse.json(
-        { error: "Please enter a valid website price." },
+        { error: "Website price is required and must be greater than $0." },
         { status: 400 },
       );
     }
