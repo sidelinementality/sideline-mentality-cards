@@ -7,6 +7,10 @@ import {
   type Purchase,
 } from "@/lib/purchases";
 import {
+  buildIntakePairsFromSelection,
+  type PairMode,
+} from "@/lib/intake-pairing";
+import {
   ArrowLeftRight,
   BrainCircuit,
   CheckCircle2,
@@ -82,7 +86,6 @@ type IntakeCard = {
   error?: string;
 };
 
-type PairMode = "auto" | "sequential" | "front-only";
 type QueueFilter = "all" | "needs-ai" | "exceptions" | "needs-review" | "ready";
 
 const sports = [
@@ -338,23 +341,39 @@ export default function DealerIntakeCenter({
   }, [activeCard, activeIndex, filteredCards, isIdentifyingAll, isPublishingAll]);
 
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []).filter((file) =>
-      file.type.startsWith("image/"),
-    );
-
+    const selected = Array.from(event.target.files ?? []);
     event.target.value = "";
     setMessage("");
 
-    if (files.length === 0) {
+    const { epsonPairs, unmatchedBackPairs, unmatchedFrontPairs, genericPairs } =
+      buildIntakePairsFromSelection(selected, pairMode);
+
+    const nextCards = [
+      ...epsonPairs.map(({ front, back }) => createIntakeCard(front, back)),
+      ...unmatchedBackPairs.map(({ front }) => createIntakeCard(front)),
+      ...unmatchedFrontPairs.map(({ front }) => createIntakeCard(front)),
+      ...genericPairs.map(({ front, back }) => createIntakeCard(front, back)),
+    ];
+
+    if (nextCards.length === 0) {
       setMessage("Choose one or more image files from your scanner or computer.");
       return;
     }
 
-    const pairs = pairImages(files, pairMode);
-    const nextCards = pairs.map(({ front, back }) => createIntakeCard(front, back));
-
-    setCards((current) => [...current, ...nextCards]);
-    if (!activeCardId && nextCards[0]) setActiveCardId(nextCards[0].id);
+    for (const card of cards) {
+      URL.revokeObjectURL(card.frontPreview);
+      if (card.backPreview) URL.revokeObjectURL(card.backPreview);
+    }
+    for (const timer of Object.values(duplicateCheckTimersRef.current)) {
+      window.clearTimeout(timer);
+    }
+    duplicateCheckTimersRef.current = {};
+    duplicateCheckInFlightRef.current = {};
+    duplicateCheckedIdentitiesRef.current = {};
+    setIdentifyProgress(null);
+    setQueueFilter("all");
+    setCards(nextCards);
+    setActiveCardId(nextCards[0]?.id ?? null);
   }
 
   function updateCard(id: string, patch: Partial<IntakeCard>) {
@@ -1278,7 +1297,7 @@ function IntakeCardEditor({
             </div>
           )}
 
-          {card.error && card.status === "error" && (
+          {card.error && (card.status === "error" || card.identificationStatus === "error") && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-semibold text-red-200">
               {card.error}
             </div>
@@ -1597,104 +1616,6 @@ function createIntakeCard(frontFile: File, backFile?: File): IntakeCard {
     status: "draft",
     identificationStatus: "idle",
   };
-}
-
-function pairImages(files: File[], mode: PairMode): Array<{ front: File; back?: File }> {
-  const sorted = [...files].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }),
-  );
-
-  if (mode === "front-only") {
-    return sorted.map((front) => ({ front }));
-  }
-
-  if (mode === "sequential") {
-    const pairs: Array<{ front: File; back?: File }> = [];
-    for (let index = 0; index < sorted.length; index += 2) {
-      pairs.push({ front: sorted[index], back: sorted[index + 1] });
-    }
-    return pairs;
-  }
-
-  const groups = new Map<string, { front?: File; back?: File; loose: File[] }>();
-
-  for (const file of sorted) {
-    const parsed = parseSideFromName(file.name);
-    const group = groups.get(parsed.base) ?? { loose: [] };
-
-    if (parsed.side === "front" && !group.front) group.front = file;
-    else if (parsed.side === "back" && !group.back) group.back = file;
-    else group.loose.push(file);
-
-    groups.set(parsed.base, group);
-  }
-
-  const detectedPairs: Array<{ front: File; back?: File }> = [];
-  const leftovers: File[] = [];
-
-  for (const group of groups.values()) {
-    if (group.front || group.back) {
-      if (group.front) {
-        detectedPairs.push({ front: group.front, back: group.back });
-      } else if (group.back) {
-        // A back-only detection is safer as a front-only review item than silently labeling it as a front.
-        detectedPairs.push({ front: group.back });
-      }
-      leftovers.push(...group.loose);
-    } else {
-      leftovers.push(...group.loose);
-    }
-  }
-
-  if (detectedPairs.length === 0) {
-    return pairImages(sorted, "sequential");
-  }
-
-  for (let index = 0; index < leftovers.length; index += 2) {
-    detectedPairs.push({ front: leftovers[index], back: leftovers[index + 1] });
-  }
-
-  return detectedPairs;
-}
-
-function parseSideFromName(fileName: string) {
-  const withoutExtension = fileName.replace(/\.[^.]+$/, "");
-  const normalized = withoutExtension.toLowerCase().trim();
-
-  // V2 recognizes sides both as separated tokens ("card-front") and as a trailing suffix
-  // attached directly to the card name ("XavierWorthyCB-8Front").
-  const sideMatchers: Array<{ side: "front" | "back"; patterns: RegExp[] }> = [
-    {
-      side: "front",
-      patterns: [
-        /(?:^|[-_.\s])(front|fr)(?:$|[-_.\s])/i,
-        /(front|fr)$/i,
-        /(?:^|[-_.\s])f$/i,
-      ],
-    },
-    {
-      side: "back",
-      patterns: [
-        /(?:^|[-_.\s])(back|bk)(?:$|[-_.\s])/i,
-        /(back|bk)$/i,
-        /(?:^|[-_.\s])b$/i,
-      ],
-    },
-  ];
-
-  for (const matcher of sideMatchers) {
-    for (const pattern of matcher.patterns) {
-      if (pattern.test(normalized)) {
-        const base = normalized
-          .replace(pattern, "-")
-          .replace(/[-_.\s]+/g, "-")
-          .replace(/^-|-$/g, "");
-        return { base, side: matcher.side } as const;
-      }
-    }
-  }
-
-  return { base: normalized.replace(/[-_.\s]+/g, "-"), side: "unknown" as const };
 }
 
 function isSettled(card: IntakeCard) {
