@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Package,
   PlusCircle,
+  ScanLine,
   ShoppingBag,
   Globe,
   BarChart3,
@@ -28,6 +29,11 @@ const navigation = [
     title: "Add Card",
     href: "/dashboard/inventory/new",
     icon: PlusCircle,
+  },
+  {
+    title: "Dealer Intake",
+    href: "/dashboard/intake",
+    icon: ScanLine,
   },
   {
     title: "Purchases",

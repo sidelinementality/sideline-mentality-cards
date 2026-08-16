@@ -1,6 +1,11 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  formatPurchaseLabel,
+  type Purchase,
+} from "@/lib/purchases";
 import {
   ArrowLeftRight,
   BrainCircuit,
@@ -104,7 +109,11 @@ const purchaseSources = [
   "Other",
 ];
 
-export default function DealerIntakeCenter() {
+export default function DealerIntakeCenter({
+  initialPurchaseId = "",
+}: {
+  initialPurchaseId?: string;
+}) {
   const [cards, setCards] = useState<IntakeCard[]>([]);
   const [pairMode, setPairMode] = useState<PairMode>("auto");
   const [batchName, setBatchName] = useState(() => createBatchName());
@@ -122,10 +131,102 @@ export default function DealerIntakeCenter() {
   const [batchSeller, setBatchSeller] = useState("");
   const [batchPurchaseSession, setBatchPurchaseSession] = useState("");
   const [batchAcquisitionNotes, setBatchAcquisitionNotes] = useState("");
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState("");
+  const [purchasesError, setPurchasesError] = useState("");
+  const requestedPurchaseId = initialPurchaseId.trim();
+  const [syncedUrlPurchaseId, setSyncedUrlPurchaseId] = useState(requestedPurchaseId);
+  const [awaitingUrlPurchase, setAwaitingUrlPurchase] = useState(
+    () => Boolean(requestedPurchaseId),
+  );
   const [identifyProgress, setIdentifyProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const duplicateCheckTimersRef = useRef<Record<string, number>>({});
   const duplicateCheckInFlightRef = useRef<Record<string, string>>({});
   const duplicateCheckedIdentitiesRef = useRef<Record<string, boolean>>({});
+  const selectedPurchase = useMemo(
+    () => purchases.find((purchase) => purchase.id === selectedPurchaseId) ?? null,
+    [purchases, selectedPurchaseId],
+  );
+
+  function applySelectedPurchase(purchase: Purchase) {
+    setSelectedPurchaseId(purchase.id);
+
+    const purchaseDate = purchase.purchase_date?.slice(0, 10) ?? "";
+    const sessionLabel = formatPurchaseLabel(purchase);
+
+    setBatchPurchaseDate((current) => current.trim() || purchaseDate);
+    setBatchPurchaseSource((current) => current.trim() || purchase.source || "");
+    setBatchSeller((current) => current.trim() || purchase.seller || "");
+    setBatchPurchaseSession((current) => current.trim() || sessionLabel);
+  }
+
+  if (syncedUrlPurchaseId !== requestedPurchaseId) {
+    setSyncedUrlPurchaseId(requestedPurchaseId);
+
+    if (!requestedPurchaseId) {
+      setSelectedPurchaseId("");
+      setAwaitingUrlPurchase(false);
+    } else {
+      const matchingPurchase = purchases.find(
+        (purchase) => purchase.id === requestedPurchaseId,
+      );
+
+      if (matchingPurchase) {
+        applySelectedPurchase(matchingPurchase);
+        setAwaitingUrlPurchase(false);
+      } else {
+        setSelectedPurchaseId("");
+        setAwaitingUrlPurchase(purchases.length === 0);
+      }
+    }
+  } else if (awaitingUrlPurchase && purchases.length > 0) {
+    const matchingPurchase = purchases.find(
+      (purchase) => purchase.id === requestedPurchaseId,
+    );
+
+    if (matchingPurchase) {
+      applySelectedPurchase(matchingPurchase);
+    } else {
+      setSelectedPurchaseId("");
+    }
+
+    setAwaitingUrlPurchase(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPurchases() {
+      try {
+        const response = await fetch("/api/purchases");
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Purchases could not be loaded.");
+        }
+
+        if (!cancelled) {
+          setPurchases((result.purchases ?? []) as Purchase[]);
+          setPurchasesError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPurchases([]);
+          setPurchasesError(
+            error instanceof Error
+              ? error.message
+              : "Purchases could not be loaded.",
+          );
+        }
+      }
+    }
+
+    void loadPurchases();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const publishedCount = useMemo(
     () => cards.filter((card) => card.status === "published").length,
@@ -374,6 +475,7 @@ export default function DealerIntakeCenter() {
     setBatchSeller("");
     setBatchPurchaseSession("");
     setBatchAcquisitionNotes("");
+    setSelectedPurchaseId("");
     setIdentifyProgress(null);
     duplicateCheckedIdentitiesRef.current = {};
     duplicateCheckInFlightRef.current = {};
@@ -412,6 +514,20 @@ export default function DealerIntakeCenter() {
       };
     }));
     setMessage("Batch defaults applied to blank fields only.");
+  }
+
+  function handlePurchaseSelect(purchaseId: string) {
+    if (!purchaseId) {
+      setSelectedPurchaseId("");
+      return;
+    }
+
+    const purchase = purchases.find((item) => item.id === purchaseId);
+    if (!purchase) {
+      return;
+    }
+
+    applySelectedPurchase(purchase);
   }
 
   function goToRelativeCard(offset: number) {
@@ -552,6 +668,17 @@ export default function DealerIntakeCenter() {
 
       updateCard(card.id, { status: "publishing" });
 
+      const purchaseDate =
+        card.purchaseDate.trim() ||
+        selectedPurchase?.purchase_date?.slice(0, 10) ||
+        "";
+      const purchaseSource =
+        card.purchaseSource.trim() || selectedPurchase?.source || "";
+      const seller = card.seller.trim() || selectedPurchase?.seller || "";
+      const purchaseSession =
+        card.purchaseSession.trim() ||
+        (selectedPurchase ? formatPurchaseLabel(selectedPurchase) : "");
+
       const response = await fetch("/api/cards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -568,10 +695,11 @@ export default function DealerIntakeCenter() {
           autograph: card.autograph,
           serialNumber: card.serialNumber,
           purchasePrice: card.purchasePrice.trim() === "" ? null : Number(card.purchasePrice),
-          purchaseDate: card.purchaseDate.trim() || undefined,
-          purchaseSource: card.purchaseSource.trim() || undefined,
-          seller: card.seller.trim() || undefined,
-          purchaseSession: card.purchaseSession.trim() || undefined,
+          purchaseDate: purchaseDate || undefined,
+          purchaseSource: purchaseSource || undefined,
+          seller: seller || undefined,
+          purchaseSession: purchaseSession || undefined,
+          purchaseId: selectedPurchaseId || undefined,
           shippingCost: 0,
           salesTax: 0,
           purchaseFees: 0,
@@ -692,6 +820,38 @@ export default function DealerIntakeCenter() {
               </select>
             </label>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <label className="text-sm font-bold text-zinc-300">
+            Purchase / Lot
+            <select
+              value={selectedPurchaseId}
+              onChange={(event) => handlePurchaseSelect(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-green-500/60"
+            >
+              <option value="">No purchase selected</option>
+              {purchases.map((purchase) => (
+                <option key={purchase.id} value={purchase.id}>
+                  {formatPurchaseLabel(purchase)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="mt-2 text-xs text-zinc-500">
+            New cards published from this batch will link to the selected purchase. Individual purchase price is not changed. Cards already in inventory are left untouched.
+          </p>
+          {purchasesError && (
+            <p className="mt-2 text-xs font-semibold text-amber-300">
+              {purchasesError}
+            </p>
+          )}
+          <Link
+            href="/dashboard/purchases"
+            className="mt-2 inline-block text-xs font-bold text-green-400 hover:text-green-300"
+          >
+            Create or manage purchases
+          </Link>
         </div>
 
         <label className="mt-7 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-green-500/30 bg-green-500/[0.04] px-6 py-10 text-center transition hover:border-green-500/70 hover:bg-green-500/[0.07]">

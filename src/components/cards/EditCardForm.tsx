@@ -4,6 +4,12 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import CardImageUpload from "@/components/cards/CardImageUpload";
+import {
+  formatCurrency as formatPurchaseCurrency,
+  formatPurchaseDate,
+  formatPurchaseLabel,
+  formatPurchaseStatus,
+} from "@/lib/purchases";
 
 export type EditableCard = {
   id: string;
@@ -36,6 +42,7 @@ export type EditableCard = {
   purchase_source: string | null;
   seller: string | null;
   purchase_session: string | null;
+  purchase_id?: string | null;
   purchase_price: number | string | null;
   shipping_cost: number | string | null;
   sales_tax: number | string | null;
@@ -66,9 +73,21 @@ export type EditableCard = {
 
 type EditCardFormProps = {
   card: EditableCard;
+  linkedPurchase?: {
+    id: string;
+    name: string;
+    source: string | null;
+    seller: string | null;
+    purchase_date: string | null;
+    total_cost: number | string;
+    status: string;
+  } | null;
 };
 
-export default function EditCardForm({ card }: EditCardFormProps) {
+export default function EditCardForm({
+  card,
+  linkedPurchase = null,
+}: EditCardFormProps) {
   const router = useRouter();
 
   const [frontImageUrl, setFrontImageUrl] = useState(card.image_url ?? "");
@@ -461,6 +480,43 @@ export default function EditCardForm({ card }: EditCardFormProps) {
         title="Purchase Details"
         description="Maintain the true cost basis and acquisition source for this card. Dealer Intake can fill these when a card is published from a scan batch."
       >
+        {linkedPurchase ? (
+          <div className="mb-6 rounded-2xl border border-green-500/20 bg-green-500/10 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-green-300">
+              Linked purchase / lot
+            </p>
+            <p className="mt-2 text-lg font-black text-white">
+              {formatPurchaseLabel(linkedPurchase)}
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">
+              {[
+                linkedPurchase.seller ? `Seller: ${linkedPurchase.seller}` : null,
+                `Status: ${formatPurchaseStatus(linkedPurchase.status)}`,
+                linkedPurchase.purchase_date
+                  ? formatPurchaseDate(linkedPurchase.purchase_date)
+                  : null,
+                `Lot total: ${formatPurchaseCurrency(linkedPurchase.total_cost)}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <p className="mt-2 text-xs text-zinc-400">
+              Lot total cost is separate from this card&apos;s purchase price.
+            </p>
+            <Link
+              href={`/dashboard/purchases/${linkedPurchase.id}`}
+              className="mt-3 inline-block text-sm font-bold text-green-300 hover:text-green-200"
+            >
+              View purchase
+            </Link>
+          </div>
+        ) : card.purchase_id ? (
+          <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-sm text-amber-200">
+            This card is linked to a purchase, but the purchase record could not
+            be loaded.
+          </div>
+        ) : null}
+
         <div className="grid gap-6 md:grid-cols-2">
           <TextField
             id="purchaseDate"

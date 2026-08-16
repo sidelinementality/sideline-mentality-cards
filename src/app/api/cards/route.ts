@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveCardSlug } from "@/lib/card-slug";
+import { isPurchaseId } from "@/lib/purchases";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type CreateCardRequest = {
@@ -32,6 +33,7 @@ type CreateCardRequest = {
   purchaseSource?: string;
   seller?: string;
   purchaseSession?: string;
+  purchaseId?: string | null;
   purchasePrice?: number | null;
   shippingCost?: number;
   salesTax?: number;
@@ -202,6 +204,38 @@ export async function POST(request: Request) {
       );
     }
 
+    const purchaseId = cleanOptionalText(body.purchaseId ?? undefined);
+
+    if (purchaseId && !isPurchaseId(purchaseId)) {
+      return NextResponse.json(
+        { error: "A valid purchase is required when linking a lot." },
+        { status: 400 },
+      );
+    }
+
+    if (purchaseId) {
+      const { data: purchase, error: purchaseError } = await supabaseAdmin
+        .from("purchases")
+        .select("id")
+        .eq("id", purchaseId)
+        .maybeSingle();
+
+      if (purchaseError) {
+        console.error("Purchase lookup error:", purchaseError);
+        return NextResponse.json(
+          { error: "The selected purchase could not be verified." },
+          { status: 500 },
+        );
+      }
+
+      if (!purchase) {
+        return NextResponse.json(
+          { error: "The selected purchase could not be found." },
+          { status: 400 },
+        );
+      }
+    }
+
     const graded = Boolean(body.graded);
 
     const { data, error } = await supabaseAdmin
@@ -240,6 +274,7 @@ export async function POST(request: Request) {
         purchase_source: cleanOptionalText(body.purchaseSource),
         seller: cleanOptionalText(body.seller),
         purchase_session: cleanOptionalText(body.purchaseSession),
+        ...(purchaseId ? { purchase_id: purchaseId } : {}),
         purchase_price: purchasePrice,
         shipping_cost: shippingCost,
         sales_tax: salesTax,

@@ -3,6 +3,7 @@ import EditCardForm, {
   type EditableCard,
 } from "@/components/cards/EditCardForm";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type EditCardPageProps = {
   params: Promise<{
@@ -86,6 +87,50 @@ export default async function EditCardPage({
     notFound();
   }
 
+  let purchaseId: string | null = null;
+  let linkedPurchase = null;
+
+  const { data: purchaseLink, error: purchaseLinkError } = await supabaseAdmin
+    .from("cards")
+    .select("purchase_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (purchaseLinkError) {
+    console.error("Card purchase link loading error:", purchaseLinkError);
+  } else {
+    purchaseId = (purchaseLink?.purchase_id as string | null) ?? null;
+  }
+
+  if (purchaseId) {
+    const { data: purchase, error: purchaseError } = await supabaseAdmin
+      .from("purchases")
+      .select(
+        `
+        id,
+        name,
+        source,
+        seller,
+        purchase_date,
+        total_cost,
+        status
+      `,
+      )
+      .eq("id", purchaseId)
+      .maybeSingle();
+
+    if (purchaseError) {
+      console.error("Linked purchase loading error:", purchaseError);
+    }
+
+    linkedPurchase = purchase;
+  }
+
+  const typedCard = {
+    ...card,
+    purchase_id: purchaseId,
+  } as EditableCard;
+
   return (
     <div className="mx-auto max-w-6xl">
       <section className="mb-8">
@@ -100,13 +145,13 @@ export default async function EditCardPage({
         <p className="mt-3 text-zinc-400">
           Update the complete inventory record for{" "}
           <span className="font-semibold text-white">
-            {card.player_name}
+            {typedCard.player_name}
           </span>
           .
         </p>
       </section>
 
-      <EditCardForm card={card as EditableCard} />
+      <EditCardForm card={typedCard} linkedPurchase={linkedPurchase} />
     </div>
   );
 }
