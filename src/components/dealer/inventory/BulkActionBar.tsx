@@ -5,7 +5,8 @@ type BulkAction =
   | "feature"
   | "unfeature"
   | "archive"
-  | "change-status";
+  | "change-status"
+  | "delete";
 
 type BulkActionBarProps = {
   selectedCount: number;
@@ -102,6 +103,7 @@ export default function BulkActionBar({
               <option value="unfeature">Unfeature selected</option>
               <option value="archive">Archive selected</option>
               <option value="change-status">Change status</option>
+              <option value="delete">Delete selected</option>
             </select>
           </div>
 
@@ -140,7 +142,11 @@ export default function BulkActionBar({
             disabled={!canApply}
             className="rounded-xl bg-green-600 px-6 py-3 font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isUpdating ? "Updating..." : "Apply Action"}
+            {isUpdating
+              ? bulkAction === "delete"
+                ? "Deleting..."
+                : "Updating..."
+              : "Apply Action"}
           </button>
 
           {selectedCount > 0 && (

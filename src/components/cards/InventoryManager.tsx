@@ -54,6 +54,21 @@ type BulkUpdatedCard = {
   listing_status: string | null;
 };
 
+type BulkDeleteSkip = {
+  cardId: string;
+  reason: string;
+};
+
+type BulkDeleteResult = {
+  message?: string;
+  requestedCount?: number;
+  deletedCount?: number;
+  skippedCount?: number;
+  deletedCardIds?: string[];
+  skippedCardIds?: string[];
+  skipped?: BulkDeleteSkip[];
+};
+
 export default function InventoryManager({
   cards,
 }: InventoryManagerProps) {
@@ -171,6 +186,20 @@ export default function InventoryManager({
       return;
     }
 
+    if (bulkAction === "delete") {
+      const recordLabel =
+        selectedCardIds.length === 1
+          ? "inventory record"
+          : "inventory records";
+      const confirmed = window.confirm(
+        `Permanently delete ${selectedCardIds.length} selected ${recordLabel}? This cannot be undone.`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsBulkUpdating(true);
     setBulkMessage("");
     setBulkError("");
@@ -195,8 +224,32 @@ export default function InventoryManager({
 
       if (!response.ok) {
         throw new Error(
-          result.error || "The selected cards could not be updated.",
+          result.error ||
+            (bulkAction === "delete"
+              ? "The selected cards could not be deleted."
+              : "The selected cards could not be updated."),
         );
+      }
+
+      if (bulkAction === "delete") {
+        const deletion = result as BulkDeleteResult;
+        const deletedCardIds = deletion.deletedCardIds ?? [];
+        const skippedCardIds = deletion.skippedCardIds ?? [];
+        const deletedIdSet = new Set(deletedCardIds);
+
+        setInventoryCards((currentCards) =>
+          currentCards.filter((card) => !deletedIdSet.has(card.id)),
+        );
+        setSelectedCardIds(skippedCardIds);
+        setBulkAction(skippedCardIds.length > 0 ? "delete" : "");
+        setSelectedStatus("");
+        setBulkMessage(
+          deletion.message ||
+            `${deletedCardIds.length} inventory record${
+              deletedCardIds.length === 1 ? "" : "s"
+            } permanently deleted.`,
+        );
+        return;
       }
 
       const updatedCards = (result.cards ?? []) as BulkUpdatedCard[];

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import {
+  buildBulkDeleteMessage,
+  cardImageStoragePaths,
+  planBulkCardDeletion,
+} from "@/lib/bulk-card-deletion";
 
 type BulkAction =
   | "publish"
@@ -8,7 +13,8 @@ type BulkAction =
   | "feature"
   | "unfeature"
   | "archive"
-  | "change-status";
+  | "change-status"
+  | "delete";
 
 type BulkCardRequest = {
   cardIds?: string[];
@@ -25,6 +31,16 @@ type PublishableCard = {
   price: number | string | null;
   image_url: string | null;
   stock: number | null;
+};
+
+type DeletableCard = {
+  id: string;
+  image_url: string | null;
+  back_image_url: string | null;
+};
+
+type OrderItemCardRef = {
+  card_id: string | null;
 };
 
 const allowedStatuses = [
@@ -105,6 +121,10 @@ export async function POST(request: Request) {
         { error: "Choose a bulk action." },
         { status: 400 },
       );
+    }
+
+    if (body.action === "delete") {
+      return await deleteSelectedCards(cardIds);
     }
 
     const requestedStatus = body.status?.trim();
@@ -359,4 +379,123 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+async function deleteSelectedCards(cardIds: string[]) {
+  const { data: existingCards, error: existingError } =
+    await supabaseAdmin
+      .from("cards")
+      .select("id, image_url, back_image_url")
+      .in("id", cardIds);
+
+  if (existingError) {
+    console.error(
+      "Bulk card deletion lookup error:",
+      existingError,
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "The selected cards could not be checked before deletion.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const { data: orderItems, error: orderItemsError } =
+    await supabaseAdmin
+      .from("order_items")
+      .select("card_id")
+      .in("card_id", cardIds);
+
+  if (orderItemsError) {
+    console.error(
+      "Bulk card deletion order lookup error:",
+      orderItemsError,
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Order history could not be checked before deleting inventory.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const cards = (existingCards ?? []) as DeletableCard[];
+  const plan = planBulkCardDeletion({
+    requestedIds: cardIds,
+    existingIds: cards.map((card) => card.id),
+    orderReferencedIds: ((orderItems ?? []) as OrderItemCardRef[])
+      .map((item) => item.card_id)
+      .filter(
+        (id): id is string =>
+          typeof id === "string" && id.length > 0,
+      ),
+  });
+
+  let deletedCardIds: string[] = [];
+
+  if (plan.deletableIds.length > 0) {
+    const imagesById = new Map(
+      cards.map((card) => [card.id, card] as const),
+    );
+
+    const { data: deletedRows, error: deleteError } =
+      await supabaseAdmin
+        .from("cards")
+        .delete()
+        .in("id", plan.deletableIds)
+        .select("id");
+
+    if (deleteError) {
+      console.error("Bulk card deletion error:", deleteError);
+
+      return NextResponse.json(
+        {
+          error: "The selected cards could not be deleted.",
+        },
+        { status: 500 },
+      );
+    }
+
+    deletedCardIds = (deletedRows ?? []).map((row) => row.id);
+
+    const imagePaths = cardImageStoragePaths(
+      deletedCardIds.flatMap((id) => {
+        const card = imagesById.get(id);
+        return [card?.image_url, card?.back_image_url];
+      }),
+    );
+
+    if (imagePaths.length > 0) {
+      const { error: storageError } = await supabaseAdmin.storage
+        .from("card-images")
+        .remove(imagePaths);
+
+      if (storageError) {
+        console.error(
+          "Unable to delete images from storage:",
+          storageError,
+        );
+      }
+    }
+  }
+
+  const skippedCardIds = plan.skipped.map((item) => item.cardId);
+
+  return NextResponse.json({
+    message: buildBulkDeleteMessage(
+      deletedCardIds.length,
+      plan.skipped,
+    ),
+    requestedCount: cardIds.length,
+    deletedCount: deletedCardIds.length,
+    skippedCount: skippedCardIds.length,
+    deletedCardIds,
+    skippedCardIds,
+    skipped: plan.skipped,
+  });
 }
