@@ -11,6 +11,8 @@ import ShopBySport from "@/components/home/ShopBySport";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
 import Reveal from "@/components/ui/Reveal";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <main>

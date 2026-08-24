@@ -59,6 +59,8 @@ export default async function FeaturedCardOfWeek() {
       `,
     )
     .eq("featured", true)
+    .eq("website_ready", true)
+    .eq("listing_status", "Published")
     .gt("stock", 0)
     .order("created_at", { ascending: false })
     .limit(1)
