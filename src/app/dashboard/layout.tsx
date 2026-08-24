@@ -107,6 +107,13 @@ export default async function DashboardLayout({
               </Link>
 
               <Link
+                href="/dashboard/website"
+                className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300"
+              >
+                Website Queue
+              </Link>
+
+              <Link
                 href="/dashboard/orders"
                 className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300"
               >

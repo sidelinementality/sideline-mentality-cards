@@ -10,6 +10,7 @@ import {
   buildIntakePairsFromSelection,
   type PairMode,
 } from "@/lib/intake-pairing";
+import { intakePublishWebsiteFields } from "@/lib/website-queue";
 import {
   ArrowLeftRight,
   BrainCircuit,
@@ -730,9 +731,8 @@ export default function DealerIntakeCenter({
           slot: card.slot,
           imageUrl: frontImageUrl,
           backImageUrl,
-          websiteReady: card.websiteReady,
           featured: false,
-          listingStatus: "Available",
+          ...intakePublishWebsiteFields(card.websiteReady),
           internalNotes: buildIntakeInternalNotes(batchName, card),
         }),
       });
