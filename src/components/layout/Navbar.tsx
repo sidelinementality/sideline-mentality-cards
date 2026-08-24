@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/components/cart/CartProvider";
+import CardsWordmark from "@/components/shared/CardsWordmark";
 
 const shopLinks = [
   {
@@ -103,7 +104,7 @@ export default function Navbar() {
       <div className="border-b border-white/[0.07] bg-green-500/[0.06]">
         <div className="mx-auto flex min-h-8 max-w-[1500px] items-center justify-center px-4 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-green-300 sm:text-xs">
-            Collector-owned marketplace · New inventory added regularly
+            ★ New cards added every week · Collector-owned marketplace
           </p>
         </div>
       </div>
@@ -113,33 +114,12 @@ export default function Navbar() {
           <Link
             href="/"
             onClick={closeMobileMenu}
-            className="group flex min-w-0 items-center gap-3"
+            className="shrink-0"
           >
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-400 to-green-600 font-black text-black shadow-[0_0_30px_rgba(34,197,94,0.18)] transition duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_0_38px_rgba(34,197,94,0.3)]">
-              <span className="text-lg tracking-[-0.08em]">SM</span>
-
-              <div
-                className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent"
-                aria-hidden="true"
-              />
-            </div>
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black uppercase leading-none tracking-[0.08em] text-white sm:text-base">
-                Sideline Mentality
-              </p>
-
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="h-px w-5 bg-green-500" />
-
-                <p className="text-[10px] font-black uppercase tracking-[0.32em] text-green-400 sm:text-xs">
-                  Cards
-                </p>
-              </div>
-            </div>
+            <CardsWordmark />
           </Link>
 
-          <nav className="hidden items-center gap-1 lg:flex">
+          <nav className="hidden items-center gap-0.5 lg:flex xl:gap-1">
             <DesktopNavLink
               href="/"
               label="Home"
@@ -451,7 +431,7 @@ function DesktopNavLink({
   return (
     <Link
       href={href}
-      className={`relative rounded-xl px-3 py-3 text-xs font-black uppercase tracking-[0.1em] transition xl:px-4 ${
+      className={`relative whitespace-nowrap rounded-xl px-2.5 py-3 text-xs font-black uppercase tracking-[0.1em] transition xl:px-3.5 ${
         active
           ? "bg-green-500/10 text-green-400"
           : "text-neutral-300 hover:bg-white/5 hover:text-green-400"

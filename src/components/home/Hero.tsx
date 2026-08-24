@@ -1,326 +1,300 @@
 import Image from "next/image";
 import Link from "next/link";
 import ShopSearch from "@/components/shop/ShopSearch";
+import { supabase } from "@/lib/supabase";
 
-const collectorBenefits = [
-  {
-    title: "Secure Checkout",
-    description: "Protected Stripe payments",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="h-5 w-5"
-        aria-hidden="true"
-      >
-        <rect x="4" y="10" width="16" height="10" rx="2" />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M8 10V7a4 4 0 0 1 8 0v3"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Accurate Listings",
-    description: "Clear photos and honest details",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="h-5 w-5"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="9" />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="m8 12 2.5 2.5L16 9"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Collector Owned",
-    description: "Built by someone who values the hobby",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="h-5 w-5"
-        aria-hidden="true"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"
-        />
-      </svg>
-    ),
-  },
+type HeroCard = {
+  id: string;
+  slug: string;
+  player_name: string;
+  sport: string | null;
+  team: string | null;
+  year: number | null;
+  brand: string | null;
+  price: number | string | null;
+  image_url: string;
+  featured: boolean | null;
+  created_at: string | null;
+};
+
+const quickLinks = [
+  { label: "New Arrivals", href: "/shop?sort=newest" },
+  { label: "Baseball", href: "/shop?sport=Baseball" },
+  { label: "Football", href: "/shop?sport=Football" },
+  { label: "Basketball", href: "/shop?sport=Basketball" },
+  { label: "More Sports", href: "/shop" },
 ];
 
-const collectionLinks = [
-  {
-    label: "New Arrivals",
-    href: "/shop?sort=newest",
-  },
-  {
-    label: "Rookie Cards",
-    href: "/shop?rookie=true",
-  },
-  {
-    label: "Autographs",
-    href: "/shop?auto=true",
-  },
-  {
-    label: "Graded Cards",
-    href: "/shop?graded=true",
-  },
+const cardPositions = [
+  "left-[2%] top-[18%] z-10 w-[36%] -rotate-6 hover:-translate-y-2 hover:-rotate-3",
+  "left-[31%] top-[3%] z-30 w-[42%] rotate-1 hover:-translate-y-3 hover:rotate-0",
+  "right-[0%] top-[20%] z-20 w-[34%] rotate-7 hover:-translate-y-2 hover:rotate-4",
 ];
 
-export default function Hero() {
+
+async function getHeroData() {
+  const selectFields = `
+    id,
+    slug,
+    player_name,
+    sport,
+    team,
+    year,
+    brand,
+    price,
+    image_url,
+    featured,
+    created_at
+  `;
+
+  const [{ data: candidateData, error: candidateError }, { count, error: countError }] =
+    await Promise.all([
+      supabase
+        .from("cards")
+        .select(selectFields)
+        .eq("website_ready", true)
+        .eq("listing_status", "Published")
+        .gt("stock", 0)
+        .not("image_url", "is", null)
+        .order("featured", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("cards")
+        .select("id", { count: "exact", head: true })
+        .eq("website_ready", true)
+        .eq("listing_status", "Published")
+        .gt("stock", 0),
+    ]);
+
+  if (candidateError) {
+    console.error("Hero card candidates error:", candidateError);
+  }
+
+  if (countError) {
+    console.error("Hero inventory count error:", countError);
+  }
+
+  const candidates = (candidateData ?? []) as HeroCard[];
+  const leadCard = candidates.find((card) => card.featured) ?? candidates[0] ?? null;
+
+  if (!leadCard) {
+    return { heroCards: [], inventoryCount: count ?? 0 };
+  }
+
+  const selected: HeroCard[] = [leadCard];
+
+  const addBestRemainingCard = () => {
+    const selectedIds = new Set(selected.map((card) => card.id));
+    const selectedSports = new Set(selected.map((card) => card.sport).filter(Boolean));
+    const selectedTeams = new Set(selected.map((card) => card.team).filter(Boolean));
+
+    const remaining = candidates.filter((card) => !selectedIds.has(card.id));
+
+    const nextCard =
+      remaining.find((card) => card.sport && !selectedSports.has(card.sport)) ??
+      remaining.find((card) => card.team && !selectedTeams.has(card.team)) ??
+      remaining[0];
+
+    if (nextCard) selected.push(nextCard);
+  };
+
+  addBestRemainingCard();
+  addBestRemainingCard();
+
+  // Keep the strongest featured card in the center position of the visual stack.
+  const heroCards =
+    selected.length >= 3
+      ? [selected[1], selected[0], selected[2]]
+      : selected.length === 2
+        ? [selected[1], selected[0]]
+        : selected;
+
+  return {
+    heroCards,
+    inventoryCount: count ?? 0,
+  };
+}
+export default async function Hero() {
+  const { heroCards, inventoryCount } = await getHeroData();
+  const leadCard = heroCards[1] ?? heroCards[0] ?? null;
+
   return (
-    <section className="relative isolate overflow-hidden border-b border-white/10 bg-black text-white">
-      <HeroBackground />
+    <section className="relative overflow-hidden border-b border-white/10 bg-black text-white">
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_34%,rgba(34,197,94,0.16),transparent_34%),radial-gradient(circle_at_18%_18%,rgba(34,197,94,0.08),transparent_24%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/5 to-black" />
+      </div>
 
-      <div className="relative mx-auto max-w-[1500px] px-5 pb-10 pt-10 sm:px-6 sm:pb-14 sm:pt-14 lg:px-8 lg:pb-16 lg:pt-16">
-        <div className="grid items-center gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-12 xl:gap-16">
-          <div className="relative z-20">
-            <div className="inline-flex items-center gap-3 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2 backdrop-blur">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-50" />
-
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
-              </span>
-
-              <span className="text-[11px] font-black uppercase tracking-[0.22em] text-green-300 sm:text-xs">
-                Premium Sports Card Marketplace
-              </span>
+      <div className="relative mx-auto max-w-7xl px-5 pb-7 pt-10 sm:px-6 sm:pt-14 lg:px-8 lg:pb-0 lg:pt-16">
+        <div className="grid items-center gap-10 lg:min-h-[570px] lg:grid-cols-[0.92fr_1.08fr] lg:gap-12 xl:min-h-[610px] xl:gap-16">
+          <div className="relative z-30 pb-2 lg:pb-16">
+            <div className="flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.24em] text-green-400 sm:text-xs">
+              <span className="h-px w-10 bg-green-500" />
+              The Hunt Starts Here
             </div>
 
-            <h1 className="mt-7 max-w-3xl text-[2.9rem] font-black uppercase leading-[0.88] tracking-[-0.055em] sm:text-6xl lg:text-[4.8rem] xl:text-[5.5rem]">
-              The next
-
-              <span className="mt-2 block text-green-400">
-                centerpiece
-              </span>
-
-              <span className="mt-2 block text-white">
-                starts here.
+            <h1 className="mt-5 max-w-3xl text-[3.35rem] font-black uppercase leading-[0.88] tracking-[-0.055em] sm:text-6xl md:text-7xl lg:text-[5.25rem] xl:text-[5.75rem]">
+              Find Your
+              <span className="mt-1 block text-green-400 drop-shadow-[0_0_28px_rgba(34,197,94,0.2)]">
+                Next Card.
               </span>
             </h1>
 
-            <p className="mt-7 max-w-xl text-base leading-7 text-neutral-300 sm:text-lg sm:leading-8">
-              Discover premium sports cards from every major league. Every
-              listing is carefully photographed, accurately described, and
-              backed by a collector who values the hobby as much as you do.
+            <p className="mt-6 max-w-xl text-base leading-7 text-neutral-300 sm:text-lg sm:leading-8">
+              Rookies, refractors, parallels, stars and legends. Fresh inventory
+              for collectors who still love the hunt.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link
-                href="/shop?sort=newest"
-                className="group inline-flex min-h-14 items-center justify-center gap-3 rounded-xl bg-green-500 px-6 py-4 text-sm font-black uppercase tracking-wide text-black shadow-[0_16px_45px_rgba(34,197,94,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-[0_20px_55px_rgba(34,197,94,0.3)]"
-              >
-                Shop New Arrivals
+            <div className="mt-7 max-w-2xl rounded-2xl border border-white/10 bg-white/[0.045] p-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-4">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-green-400 sm:text-xs">
+                  Search The Shop
+                </p>
+                <p className="hidden text-xs font-semibold text-neutral-500 sm:block">
+                  Player · Team · Brand · Grade
+                </p>
+              </div>
 
-                <span
-                  className="transition-transform group-hover:translate-x-1"
-                  aria-hidden="true"
-                >
+              <ShopSearch />
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link
+                href="/shop"
+                className="group inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3.5 text-sm font-black uppercase tracking-wide text-black shadow-lg shadow-green-500/20 transition duration-200 hover:-translate-y-0.5 hover:bg-green-400 hover:shadow-green-500/30"
+              >
+                Shop All Cards
+                <span className="transition group-hover:translate-x-1" aria-hidden="true">
                   →
                 </span>
               </Link>
 
               <Link
-                href="/shop"
-                className="inline-flex min-h-14 items-center justify-center rounded-xl border border-white/20 bg-white/[0.06] px-6 py-4 text-sm font-black uppercase tracking-wide text-white backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-green-500/60 hover:bg-green-500/10 hover:text-green-300"
+                href="/shop?sort=newest"
+                className="inline-flex min-h-[52px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-black uppercase tracking-wide text-white backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-green-500/60 hover:bg-green-500/10 hover:text-green-400"
               >
-                Browse All Cards
-              </Link>
-
-              <Link
-                href="/sell"
-                className="inline-flex min-h-14 items-center justify-center rounded-xl px-5 py-4 text-sm font-black uppercase tracking-wide text-neutral-400 transition hover:text-green-300"
-              >
-                Sell Your Collection →
+                New Arrivals
               </Link>
             </div>
 
-            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
-              {collectorBenefits.map((item) => (
-                <div
-                  key={item.title}
-                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-green-500/25 bg-green-500/10 text-green-400">
-                    {item.icon}
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-white">
-                      {item.title}
-                    </p>
-
-                    <p className="mt-1 text-[11px] leading-4 text-neutral-500">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-bold uppercase tracking-[0.12em] text-neutral-500 sm:text-sm">
+              <span className="text-neutral-300">
+                <span className="text-green-400">{inventoryCount}</span> cards live
+              </span>
+              <span className="hidden h-4 w-px bg-white/15 sm:block" />
+              <span>Secure checkout</span>
+              <span className="hidden h-4 w-px bg-white/15 sm:block" />
+              <span>Collector owned</span>
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto w-full max-w-5xl lg:mx-0 lg:max-w-none">
+          <div className="relative mx-auto h-[420px] w-full max-w-[680px] sm:h-[500px] lg:h-[545px] lg:max-w-none">
             <div
-              className="absolute -inset-10 rounded-[4rem] bg-green-500/10 blur-3xl"
+              className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-green-500/10 blur-3xl"
               aria-hidden="true"
             />
 
-            <div
-              className="absolute -right-10 top-4 h-72 w-72 rounded-full bg-green-400/10 blur-3xl"
-              aria-hidden="true"
-            />
+            {heroCards.length > 0 ? (
+              <>
+                <div className="absolute left-1/2 top-[8%] z-0 h-[78%] w-[74%] -translate-x-1/2 rounded-[2.25rem] border border-white/[0.06] bg-gradient-to-b from-white/[0.045] to-white/[0.015] shadow-[0_40px_110px_rgba(0,0,0,0.5)] backdrop-blur-sm" />
 
-            <div className="relative overflow-hidden rounded-[2rem] border border-green-500/30 bg-neutral-950 shadow-[0_35px_100px_rgba(0,0,0,0.75)]">
-              <div
-                className="pointer-events-none absolute inset-0 z-20 ring-1 ring-inset ring-white/10"
-                aria-hidden="true"
-              />
-
-              <Image
-                src="/sideline-mentality-cards-hero.png"
-                alt="Premium sports trading cards available from Sideline Mentality Cards"
-                width={1536}
-                height={1024}
-                priority
-                sizes="(max-width: 1024px) 100vw, 62vw"
-                className="aspect-[3/2] w-full object-contain object-center transition duration-700 ease-out hover:scale-[1.015]"
-              />
-
-              <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/55 via-transparent to-green-500/10"
-                aria-hidden="true"
-              />
-
-              <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/50 to-transparent"
-                aria-hidden="true"
-              />
-
-              <div className="absolute left-5 top-5 z-30 sm:left-7 sm:top-7">
-                <div className="rounded-full border border-white/15 bg-black/60 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white backdrop-blur-xl sm:text-xs">
-                  Curated for Collectors
-                </div>
-              </div>
-
-              <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black via-black/90 to-transparent px-5 pb-5 pt-24 sm:px-8 sm:pb-8">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-green-400">
-                      Sideline Mentality Cards
-                    </p>
-
-                    <p className="mt-2 max-w-md text-base font-bold leading-6 text-white sm:text-lg">
-                      Premium cards. Honest listings. A better collecting
-                      experience.
-                    </p>
-                  </div>
-
+                {heroCards.map((card, index) => (
                   <Link
-                    href="/shop"
-                    className="group inline-flex shrink-0 items-center gap-2 text-sm font-black uppercase tracking-wide text-green-400 transition hover:text-green-300"
+                    key={card.id}
+                    href={`/cards/${card.slug}`}
+                    className={`group absolute block transition duration-300 ease-out ${cardPositions[index]}`}
+                    aria-label={`View ${card.player_name}`}
                   >
-                    Explore Inventory
+                    <div className="relative aspect-[2.5/3.5] overflow-hidden rounded-xl border border-white/15 bg-neutral-950 p-2 shadow-[0_24px_55px_rgba(0,0,0,0.6)] sm:rounded-2xl sm:p-2.5">
+                      <div className="relative h-full w-full overflow-hidden rounded-lg bg-black sm:rounded-xl">
+                        <Image
+                          src={card.image_url}
+                          alt={`${card.player_name} sports card`}
+                          fill
+                          priority={index === 1}
+                          sizes="(max-width: 640px) 38vw, (max-width: 1024px) 30vw, 18vw"
+                          className="object-contain transition duration-500 group-hover:scale-[1.035]"
+                        />
+                      </div>
 
-                    <span
-                      className="transition-transform group-hover:translate-x-1"
-                      aria-hidden="true"
-                    >
-                      →
-                    </span>
+                      <div
+                        className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-tr from-transparent via-white/[0.055] to-green-400/[0.08] opacity-70 sm:rounded-2xl"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </Link>
-                </div>
+                ))}
+
+                {leadCard ? (
+                  <Link
+                    href={`/cards/${leadCard.slug}`}
+                    className="absolute bottom-[5%] right-[3%] z-40 max-w-[78%] rounded-2xl border border-white/10 bg-black/90 px-4 py-3 shadow-2xl backdrop-blur-md transition hover:border-green-500/40 sm:max-w-[66%] sm:px-5 sm:py-4"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-400 sm:text-xs">
+                      Featured Pick
+                    </p>
+                    <div className="mt-1 flex items-end justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black uppercase text-white sm:text-base">
+                          {leadCard.player_name}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs font-semibold text-neutral-400 sm:text-sm">
+                          {[leadCard.year, leadCard.brand].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-[10px] font-black uppercase tracking-[0.16em] text-green-400 sm:text-xs">
+                        View Card →
+                      </p>
+                    </div>
+                  </Link>
+                ) : null}
+              </>
+            ) : (
+              <div className="group absolute inset-x-0 top-[8%] mx-auto w-[92%] overflow-hidden rounded-[2rem] border border-green-500/25 bg-neutral-950 shadow-[0_35px_100px_rgba(0,0,0,0.65)]">
+                <Image
+                  src="/sideline-mentality-cards-hero.png"
+                  alt="Sideline Mentality Cards sports card marketplace"
+                  width={1536}
+                  height={1024}
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 55vw"
+                  className="h-auto w-full object-contain"
+                />
               </div>
-            </div>
-
-            <div className="relative z-40 mx-3 -mt-3 rounded-3xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl backdrop-blur-xl sm:mx-6 sm:-mt-5 sm:p-5">
-              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-green-400">
-                    Search the Marketplace
-                  </p>
-
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Find players, teams, brands, years, and grades.
-                  </p>
-                </div>
-
-                <Link
-                  href="/shop"
-                  className="hidden text-xs font-black uppercase tracking-wide text-neutral-500 transition hover:text-green-400 sm:block"
-                >
-                  View everything →
-                </Link>
-              </div>
-
-              <ShopSearch />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-10 border-t border-white/10 pt-6 sm:mt-12">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-600">
-              Explore Popular Collections
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              {collectionLinks.map((collection) => (
-                <Link
-                  key={collection.label}
-                  href={collection.href}
-                  className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-black uppercase tracking-wide text-neutral-300 transition hover:border-green-500/50 hover:bg-green-500/10 hover:text-green-300"
-                >
-                  {collection.label}
-                </Link>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-neutral-600">
-              New inventory added regularly
-            </p>
+            )}
           </div>
         </div>
       </div>
+
+      <div className="relative z-40 border-t border-white/10 bg-neutral-950/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center overflow-x-auto px-5 sm:px-6 lg:px-8">
+          <div className="mr-5 hidden shrink-0 py-4 text-[10px] font-black uppercase tracking-[0.24em] text-neutral-500 md:block">
+            Shop The Hobby
+          </div>
+
+          <nav className="flex min-w-max items-center" aria-label="Card categories">
+            {quickLinks.map((item, index) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`group flex items-center gap-2 px-4 py-4 text-xs font-black uppercase tracking-[0.14em] text-neutral-300 transition hover:bg-white/[0.035] hover:text-green-400 sm:px-5 sm:text-sm ${
+                  index > 0 ? "border-l border-white/10" : ""
+                }`}
+              >
+                {item.label}
+                <span
+                  className="text-green-500 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </div>
     </section>
-  );
-}
-
-function HeroBackground() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 -z-10"
-      aria-hidden="true"
-    >
-      <div className="absolute -left-32 top-16 h-96 w-96 rounded-full bg-green-500/10 blur-3xl" />
-
-      <div className="absolute -right-40 -top-24 h-[42rem] w-[42rem] rounded-full bg-green-500/15 blur-3xl" />
-
-      <div className="absolute bottom-0 left-1/3 h-72 w-96 rounded-full bg-green-500/[0.06] blur-3xl" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,black_82%)]" />
-
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black" />
-    </div>
   );
 }
