@@ -62,6 +62,11 @@ export function parseFastFotoFilename(fileName: string): FastFotoName | null {
     return { baseKey: normalizeBaseKey(backMatch[1]), role: "back" };
   }
 
+  const frontMatch = /^(.*)_a$/i.exec(stem);
+  if (frontMatch && frontMatch[1].trim().length > 0) {
+    return { baseKey: normalizeBaseKey(frontMatch[1]), role: "front" };
+  }
+
   if (/_\d+$/.test(stem)) {
     return { baseKey: normalizeBaseKey(stem), role: "front" };
   }

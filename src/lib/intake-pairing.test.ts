@@ -240,3 +240,131 @@ test("consumed Epson files are not sent to generic pairing", () => {
   assert.equal(result.remaining.some((file) => consumed.has(file.name)), false);
   assert.equal(result.genericPairs.length, 0);
 });
+
+const EPSON_A_B_SIX_FILE_SELECTION = [
+  "0002_a.jpg",
+  "0002_b.jpg",
+  "0003_a.jpg",
+  "0003_b.jpg",
+  "0004_a.jpg",
+  "0004_b.jpg",
+];
+
+const EPSON_A_B_SIX_FILE_CARDS = [
+  { front: "0002_a.jpg", back: "0002_b.jpg" },
+  { front: "0003_a.jpg", back: "0003_b.jpg" },
+  { front: "0004_a.jpg", back: "0004_b.jpg" },
+];
+
+test("parseFastFotoFilename treats Pattern B _a as front and _b as back with the same baseKey", () => {
+  assert.deepEqual(parseFastFotoFilename("2026_August_Cards_0005_a.jpg"), {
+    baseKey: "2026_august_cards_0005",
+    role: "front",
+  });
+  assert.deepEqual(parseFastFotoFilename("2026_August_Cards_0005_b.jpg"), {
+    baseKey: "2026_august_cards_0005",
+    role: "back",
+  });
+  assert.deepEqual(parseFastFotoFilename("0002_a.jpg"), {
+    baseKey: "0002",
+    role: "front",
+  });
+  assert.deepEqual(parseFastFotoFilename("0002_b.jpg"), {
+    baseKey: "0002",
+    role: "back",
+  });
+});
+
+test("Pattern A base + _b still pairs into one Epson card", () => {
+  const result = buildIntakePairsFromSelection(
+    named(["2026_August_Cards_0005.jpg", "2026_August_Cards_0005_b.jpg"]),
+    "auto",
+  );
+
+  assert.equal(result.remaining.length, 0);
+  assert.equal(result.genericPairs.length, 0);
+  assert.deepEqual(summarize(result.pairs), [
+    { front: "2026_August_Cards_0005.jpg", back: "2026_August_Cards_0005_b.jpg" },
+  ]);
+});
+
+test("Pattern B _a + _b pairs into one Epson card with the same baseKey", () => {
+  const result = buildIntakePairsFromSelection(
+    named(["2026_August_Cards_0005_b.jpg", "2026_August_Cards_0005_a.jpg"]),
+    "auto",
+  );
+
+  assert.equal(result.epsonPairs.length, 1);
+  assert.equal(result.remaining.length, 0);
+  assert.equal(result.genericPairs.length, 0);
+  assert.deepEqual(summarize(result.pairs), [
+    { front: "2026_August_Cards_0005_a.jpg", back: "2026_August_Cards_0005_b.jpg" },
+  ]);
+});
+
+test("multiple Pattern B _a/_b pairs in one batch become three cards and never reach generic pairing", () => {
+  const result = buildIntakePairsFromSelection(
+    EPSON_A_B_SIX_FILE_SELECTION.map((name) => ({ name, type: "image/jpeg" })),
+    "auto",
+  );
+
+  assert.equal(result.remaining.length, 0);
+  assert.equal(result.genericPairs.length, 0);
+  assert.equal(result.unmatchedFrontPairs.length, 0);
+  assert.equal(result.unmatchedBackPairs.length, 0);
+  assert.equal(result.epsonPairs.length, 3);
+  assert.equal(result.pairs.length, 3);
+  assert.deepEqual(summarize(result.pairs), EPSON_A_B_SIX_FILE_CARDS);
+});
+
+test("unmatched Pattern B _a becomes a front-only Epson card and is not sent to generic pairing", () => {
+  const result = buildIntakePairsFromSelection(named(["0002_a.jpg"]), "auto");
+
+  assert.equal(result.remaining.length, 0);
+  assert.equal(result.genericPairs.length, 0);
+  assert.equal(result.epsonPairs.length, 0);
+  assert.deepEqual(summarize(result.pairs), [{ front: "0002_a.jpg", back: null }]);
+});
+
+test("unmatched Pattern B _b is unmatched and not assigned to another card", () => {
+  const result = buildIntakePairsFromSelection(
+    named(["0002_b.jpg", "0003_a.jpg"]),
+    "auto",
+  );
+
+  assert.equal(result.remaining.length, 0);
+  assert.equal(result.genericPairs.length, 0);
+  assert.deepEqual(summarize(result.pairs), [
+    { front: "0002_b.jpg", back: null },
+    { front: "0003_a.jpg", back: null },
+  ]);
+});
+
+test("matched Pattern B files stay in Epson pairing when mixed with generic files", () => {
+  const result = buildIntakePairsFromSelection(
+    named([
+      "img2.jpg",
+      "0002_b.jpg",
+      "img1.jpg",
+      "0002_a.jpg",
+    ]),
+    "auto",
+  );
+
+  assert.equal(result.epsonPairs.length, 1);
+  assert.equal(result.genericPairs.length, 1);
+  assert.deepEqual(
+    result.remaining.map((file) => file.name),
+    ["img2.jpg", "img1.jpg"],
+  );
+  assert.deepEqual(summarize(result.epsonPairs), [
+    { front: "0002_a.jpg", back: "0002_b.jpg" },
+  ]);
+  assert.deepEqual(summarize(result.genericPairs), [
+    { front: "img1.jpg", back: "img2.jpg" },
+  ]);
+  assert.deepEqual(summarize(result.pairs), [
+    { front: "0002_a.jpg", back: "0002_b.jpg" },
+    { front: "img1.jpg", back: "img2.jpg" },
+  ]);
+});
